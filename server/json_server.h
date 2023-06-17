@@ -26,8 +26,7 @@ class JsonServer {
 
   void RunAccept(std::vector<std::shared_ptr<Reactor>> reactor_sp_vec);
 
-  Status FreeEvent(std::shared_ptr<Event> event_sp,
-                   std::shared_ptr<Reactor> reactor_sp);
+  Status FreeEvent(std::shared_ptr<Event> event_sp);
 
   const ServerConfig *config_;
   std::shared_ptr<Pool> worker_pool_;

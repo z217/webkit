@@ -4,6 +4,7 @@
 
 #include <thread>
 
+#include "reactor/epoll_event.h"
 #include "socket/tcp_socket.h"
 #include "webkit/logger.h"
 
@@ -22,12 +23,9 @@ Status Epoller::Init(int flags) {
 
 std::shared_ptr<Event> Epoller::CreateEvent(std::shared_ptr<Socket> socket_sp,
                                             std::shared_ptr<Packet> packet_sp) {
-  auto event_sp = std::make_shared<EpollEvent>(socket_sp, packet_sp);
+  auto event_sp =
+      std::make_shared<EpollEvent>(shared_from_this(), socket_sp, packet_sp);
   return event_sp;
-}
-
-Status Epoller::Add(Event *event) {
-  return Add(static_cast<EpollEvent *>(event));
 }
 
 Status Epoller::Add(EpollEvent *event) {
@@ -40,10 +38,6 @@ Status Epoller::Add(EpollEvent *event) {
   return Status::OK();
 }
 
-Status Epoller::Delete(Event *event) {
-  return Delete(static_cast<EpollEvent *>(event));
-}
-
 Status Epoller::Delete(EpollEvent *event) {
   int ret = epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, event->GetSocket()->GetFd(),
                       event->GetEpollEvent());
@@ -52,10 +46,6 @@ Status Epoller::Delete(EpollEvent *event) {
     return Status::Error(StatusCode::eEpollRemoveError, "epoller remove error");
   }
   return Status::OK();
-}
-
-Status Epoller::Modify(Event *event) {
-  return Modify(static_cast<EpollEvent *>(event));
 }
 
 Status Epoller::Modify(EpollEvent *event) {

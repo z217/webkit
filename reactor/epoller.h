@@ -2,15 +2,17 @@
 
 #include <sys/epoll.h>
 
+#include <memory>
 #include <vector>
 
-#include "epoll_event.h"
 #include "webkit/reactor.h"
 #include "webkit/server_config.h"
 #include "webkit/status.h"
 
 namespace webkit {
-class Epoller : public Reactor {
+class EpollEvent;
+
+class Epoller : public Reactor, public std::enable_shared_from_this<Epoller> {
  public:
   Epoller() = default;
   Epoller(int max_event, int timeout_ms = 0);
@@ -23,13 +25,10 @@ class Epoller : public Reactor {
 
   Status Init(int flags = 0);
 
-  Status Add(Event *event) override;
   Status Add(EpollEvent *event);
 
-  Status Delete(Event *event) override;
   Status Delete(EpollEvent *event);
 
-  Status Modify(Event *event) override;
   Status Modify(EpollEvent *event);
 
   Status Wait(std::vector<Event *> &event_vec) override;

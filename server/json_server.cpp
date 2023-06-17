@@ -83,7 +83,7 @@ void JsonServer::RunIo(uint32_t thread_id,
           if (!s.Ok()) {
             WEBKIT_LOGERROR("event recv error status code %d message %s",
                             s.Code(), s.Message());
-            FreeEvent(event->shared_from_this(), reactor_sp);
+            FreeEvent(event->shared_from_this());
             return;
           }
 
@@ -93,17 +93,17 @@ void JsonServer::RunIo(uint32_t thread_id,
           if (!s.Ok()) {
             WEBKIT_LOGERROR("dispacher error status code %d message %s",
                             s.Code(), s.Message());
-            FreeEvent(event->shared_from_this(), reactor_sp);
+            FreeEvent(event->shared_from_this());
             return;
           }
 
           event->ClearEvent();
           event->SetReadyToSend();
-          s = reactor_sp->Modify(event);
+          s = event->ModInReactor();
           if (!s.Ok()) {
             WEBKIT_LOGERROR("reactor modify error status code %d message %s",
                             s.Code(), s.Message());
-            FreeEvent(event->shared_from_this(), reactor_sp);
+            FreeEvent(event->shared_from_this());
             return;
           }
         });
@@ -117,11 +117,11 @@ void JsonServer::RunIo(uint32_t thread_id,
                             s.Code(), s.Message());
           }
 
-          FreeEvent(event->shared_from_this(), reactor_sp);
+          FreeEvent(event->shared_from_this());
         });
       } else {
         WEBKIT_LOGERROR("event return error event");
-        FreeEvent(event->shared_from_this(), reactor_sp);
+        FreeEvent(event->shared_from_this());
       }
     }
   }
@@ -197,11 +197,11 @@ void JsonServer::RunAccept(
     WEBKIT_LOGDEBUG("accept client %s:%d fd %d", cli_socket_sp->GetIp(),
                     cli_socket_sp->GetPort(), cli_socket_sp->GetFd());
     event_sp->SetReadyToRecv();
-    s = reactor_sp->Add(event_sp.get());
+    s = event_sp->AddToReactor();
     if (!s.Ok()) {
-      WEBKIT_LOGERROR("reactor add event error status code %d message %s",
+      WEBKIT_LOGERROR("event add to reactor error status code %d message %s",
                       s.Code(), s.Message());
-      FreeEvent(event_sp, nullptr);
+      FreeEvent(event_sp);
       continue;
     }
   }
@@ -209,16 +209,14 @@ void JsonServer::RunAccept(
   socket.Close();
 }
 
-Status JsonServer::FreeEvent(std::shared_ptr<Event> event_sp,
-                             std::shared_ptr<Reactor> reactor_sp) {
+Status JsonServer::FreeEvent(std::shared_ptr<Event> event_sp) {
+  if (event_sp == nullptr) return Status::OK();
   Status s;
-  if (reactor_sp != nullptr) {
-    s = reactor_sp->Delete(event_sp.get());
-    if (!s.Ok()) {
-      WEBKIT_LOGFATAL("event reactor delete error status code %d message %s",
-                      s.Code(), s.Message());
-      return s;
-    }
+  s = event_sp->DelFromReactor();
+  if (!s.Ok()) {
+    WEBKIT_LOGFATAL("event delete from reactor error status code %d message %s",
+                    s.Code(), s.Message());
+    return s;
   }
 
   s = event_sp->GetSocket()->Close();

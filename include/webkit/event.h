@@ -34,5 +34,11 @@ class Event : public std::enable_shared_from_this<Event> {
   virtual void SetPacket(std::shared_ptr<Packet> packet_sp) = 0;
 
   virtual std::shared_ptr<Packet> GetPacket() = 0;
+
+  virtual Status AddToReactor() = 0;
+
+  virtual Status DelFromReactor() = 0;
+
+  virtual Status ModInReactor() = 0;
 };
 }  // namespace webkit

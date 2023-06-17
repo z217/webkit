@@ -1,5 +1,6 @@
 #include "epoll_event.h"
 
+#include "reactor/epoller.h"
 #include "webkit/logger.h"
 
 namespace webkit {
@@ -10,9 +11,13 @@ static char *GetBuffer() {
   return buffer_up.get();
 }
 
-EpollEvent::EpollEvent(std::shared_ptr<Socket> socket_sp,
+EpollEvent::EpollEvent(std::shared_ptr<Epoller> epoller_sp,
+                       std::shared_ptr<Socket> socket_sp,
                        std::shared_ptr<Packet> packet_sp, bool is_et_mode)
-    : socket_sp_(socket_sp), packet_sp_(packet_sp), is_et_mode_(is_et_mode) {
+    : epoller_sp_(epoller_sp),
+      socket_sp_(socket_sp),
+      packet_sp_(packet_sp),
+      is_et_mode_(is_et_mode) {
   memset(&epoll_event_, 0, sizeof(epoll_event_));
   epoll_event_.data.ptr = this;
 }
@@ -115,6 +120,12 @@ Status EpollEvent::Recv() {
 }
 
 void EpollEvent::ClearEvent() { epoll_event_.events = 0; }
+
+Status EpollEvent::AddToReactor() { return epoller_sp_->Add(this); }
+
+Status EpollEvent::DelFromReactor() { return epoller_sp_->Delete(this); }
+
+Status EpollEvent::ModInReactor() { return epoller_sp_->Modify(this); }
 
 void EpollEvent::SetSocket(std::shared_ptr<Socket> socket_sp) {
   socket_sp_ = socket_sp;

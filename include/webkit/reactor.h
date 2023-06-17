@@ -17,12 +17,6 @@ class Reactor {
   virtual std::shared_ptr<Event> CreateEvent(
       std::shared_ptr<Socket> socket_sp, std::shared_ptr<Packet> packet_sp) = 0;
 
-  virtual Status Add(Event *event) = 0;
-
-  virtual Status Delete(Event *event) = 0;
-
-  virtual Status Modify(Event *event) = 0;
-
   virtual Status Wait(std::vector<Event *> &event_vec) = 0;
 };
 

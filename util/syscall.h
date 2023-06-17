@@ -7,10 +7,10 @@
 #include "webkit/status.h"
 
 namespace webkit {
-using SigFuncType = void(int);
+using SignalFuncType = void(int);
 
-SigFuncType *Signal(int signo, SigFuncType *func) {
-  struct sigaction act, oact;
+SignalFuncType *Signal(int signo, SignalFuncType *func) {
+  struct sigaction act;
   act.sa_handler = func;
   sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
@@ -23,6 +23,7 @@ SigFuncType *Signal(int signo, SigFuncType *func) {
     act.sa_flag |= SA_RESTART;
 #endif
   }
+  struct sigaction oact;
   if (sigaction(signo, &act, &oact) < 0) {
     return SIG_ERR;
   }
@@ -60,7 +61,7 @@ Status Deamon() {
   }
   // redirect stdin, stdout and stderr to /dev/null
   open("/dev/null", O_RDONLY);
-  open("/dev/null", O_RDWR);
+  open("/dev/null", O_WRONLY);
   open("/dev/null", O_RDWR);
 
   return Status::OK();

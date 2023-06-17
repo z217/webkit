@@ -2,7 +2,6 @@
 
 #include <fcntl.h>
 
-#include <mutex>
 #include <thread>
 
 #include "socket/tcp_socket.h"

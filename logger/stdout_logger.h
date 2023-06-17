@@ -2,12 +2,14 @@
 
 #include <unistd.h>
 
-#include "webkit/logger.h"
+#include "logger/callback_logger.h"
 
 namespace webkit {
-class StdoutLogger : public Logger {
+class StdoutLogger : public CallbackLogger {
  public:
-  StdoutLogger() = default;
+  StdoutLogger(CallbackType prefix_cb = DefaultPrefixCallback,
+               CallbackType suffix_cb = DefaultSuffixCallback)
+      : CallbackLogger(prefix_cb, suffix_cb) {}
 
   virtual ~StdoutLogger() = default;
 

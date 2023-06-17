@@ -50,6 +50,10 @@ enum WebkitCode {
   ePoolStopped = -701,
 
   eSyscallDeamonError = -801,
+  eThreadKeyError = -802,
+  eJsonParseError = -803,
+  eJsonNotFoundError = -804,
+  eJsonTypeError = -805,
 };
 }
 

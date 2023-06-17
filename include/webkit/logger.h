@@ -1,21 +1,23 @@
 #pragma once
 
-#include <cstdarg>
-#include <mutex>
 #include <string>
 
 #include "third_party/fmt/include/fmt/printf.h"
 #include "webkit/instance_base.h"
 
-#define WEBKIT_LOG(LEVEL, FORMAT, ...)                                  \
-  do {                                                                  \
-    if (!webkit::Logger::IsLogEnable((LEVEL))) break;                   \
-    webkit::Logger::GetDefaultInstance()->LogF(                         \
-        (LEVEL),                                                        \
-        fmt::sprintf("%s:%d %s [%s] %s\n", strrchr(__FILE__, '/') + 1,  \
-                     __LINE__, __func__,                                \
-                     webkit::Logger::LevelToString((LEVEL)), (FORMAT)), \
-        ##__VA_ARGS__);                                                 \
+#define WEBKIT_LOG(LEVEL, FORMAT, ...)                                        \
+  do {                                                                        \
+    if (!webkit::Logger::IsLogEnable((LEVEL))) break;                         \
+    const char *file_ptr = strrchr(__FILE__, '/');                            \
+    if (file_ptr == nullptr) {                                                \
+      file_ptr = __FILE__;                                                    \
+    } else {                                                                  \
+      file_ptr++;                                                             \
+    }                                                                         \
+    webkit::Logger::GetDefaultInstance()->LogF(                               \
+        (LEVEL), fmt::sprintf("%s %s\n", "[%s] %s:%d %s", (FORMAT)),          \
+        webkit::Logger::LevelToString((LEVEL)), file_ptr, __LINE__, __func__, \
+        ##__VA_ARGS__);                                                       \
   } while (false)
 
 #define WEBKIT_LOGDEBUG(FORMAT, ...) \
@@ -53,9 +55,15 @@ class Logger : public InstanceBase<Logger> {
 
   template <typename... Args>
   void LogF(Level level, const std::string &format, const Args &...args) {
+    using namespace std::string_literals;
     if (!IsLogEnable(level)) return;
-    Log(level, fmt::sprintf(format, args...));
+    Log(level, fmt::sprintf("%s"s + format + "%s"s, GetPrefix(), args...,
+                            GetSuffix()));
   }
+
+  virtual std::string GetPrefix() { return ""; }
+
+  virtual std::string GetSuffix() { return ""; }
 
   void SetLevel(Level level) { level_ = level; }
 

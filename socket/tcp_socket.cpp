@@ -39,7 +39,7 @@ Status TcpSocket::Connect(const std::string &ip, uint16_t port) {
   sin.sin_family = AF_INET;
   sin.sin_port = htons(port);
   ret = inet_pton(AF_INET, ip.c_str(), &sin.sin_addr);
-  if (ret < 0) {
+  if (ret < 1) {
     WEBKIT_LOGERROR("tcp socket ip %s pattern error", ip);
     return Status::Error(StatusCode::eParamError, "socket ip pattern error");
   }
@@ -75,7 +75,7 @@ Status TcpSocket::Listen(const std::string &ip, uint16_t port) {
   sin.sin_family = AF_INET;
   sin.sin_port = htons(port);
   ret = inet_pton(AF_INET, ip.c_str(), &sin.sin_addr);
-  if (ret < 0) {
+  if (ret < 1) {
     WEBKIT_LOGERROR("tcp socket ip %s pattern error", ip);
     return Status::Error(StatusCode::eParamError, "socket ip pattern error");
   }
@@ -237,7 +237,7 @@ Status TcpSocket::SetTimeout(suseconds_t timeout_sec, suseconds_t timeout_us) {
 
   ret = setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
   if (ret != 0) {
-    WEBKIT_LOGERROR("tcp socket set recv timeout error %d %s", errno,
+    WEBKIT_LOGERROR("tcp socket set send timeout error %d %s", errno,
                     strerror(errno));
     return Status::Error(StatusCode::eSocketOptError,
                          "socket set sock ope error");

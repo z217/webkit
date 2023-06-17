@@ -20,7 +20,10 @@ set(WEBKIT_SOURCE_FILE
   channel/tcp_channel.h
   dispatcher/json_dispatcher.cpp
   dispatcher/json_dispatcher.h
+  logger/callback_logger.h
+  logger/chain_logger.h
   logger/stdout_logger.h
+  logger/comm_logger.h
   packet/byte_packet.cpp
   packet/byte_packet.h
   pool/thread_pool.cpp
@@ -35,6 +38,8 @@ set(WEBKIT_SOURCE_FILE
   socket/tcp_socket.h
   util/circular_queue.h
   util/syscall.h
+  util/time.h
+  util/trace_helper.h
 )
 add_library(webkit STATIC ${WEBKIT_SOURCE_FILE})
 

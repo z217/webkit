@@ -4,6 +4,8 @@
 
 #include "json_server_client.h"
 #include "json_server_dispatcher.h"
+#include "logger/chain_logger.h"
+#include "logger/comm_logger.h"
 #include "logger/stdout_logger.h"
 #include "packet/byte_packet.h"
 #include "pool/thread_pool.h"
@@ -32,9 +34,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  webkit::StdoutLogger logger;
-  webkit::Logger::SetDefaultInstance(&logger);
-  webkit::Logger::SetLogLevel(webkit::Logger::eError);
+  webkit::StdoutLogger stdout_logger;
+  auto comm_logger_up = webkit::CommLogger::Open("json_server.log");
+  webkit::ChainLogger chain_logger(&stdout_logger, comm_logger_up.get());
+  webkit::Logger::SetDefaultInstance(&chain_logger);
+  webkit::Logger::SetLogLevel(webkit::Logger::eDebug);
 
   webkit::EpollerFactory epoller_factory(&config);
   webkit::ReactorFactory::SetDefaultInstance(&epoller_factory);
@@ -64,6 +68,8 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  WEBKIT_LOGERROR("json server is running");
+
   webkit::Signal(SIGKILL, [](int) { IsMainRunning = false; });
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -72,11 +78,13 @@ int main(int argc, char *argv[]) {
   cli_config.SetPort(8080);
 
   JsonServerClient client(&cli_config);
-  std::string req = "{\"method\":\"echo\",\"data\":{\"key\":\"a\"}}";
+  std::string req =
+      "{\"method\":\"echo\",\"trace_id\":\"123456\",\"data\":{\"key\":\"a\"}}";
   std::string rsp;
   s = client.Echo(req, rsp);
   printf("rsp %s\n", rsp.c_str());
 
   server.Stop();
+  WEBKIT_LOGERROR("json server stopped");
   return 0;
 }

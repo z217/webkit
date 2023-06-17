@@ -6,11 +6,10 @@
 #include "webkit/event.h"
 #include "webkit/pool.h"
 #include "webkit/reactor.h"
-#include "webkit/server.h"
 #include "webkit/server_config.h"
 
 namespace webkit {
-class JsonServer : public Server {
+class JsonServer {
  public:
   JsonServer(const ServerConfig *config);
 
@@ -18,7 +17,7 @@ class JsonServer : public Server {
 
   Status Init();
 
-  Status Run() override;
+  Status Run();
 
   void Stop();
 

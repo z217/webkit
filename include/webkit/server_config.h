@@ -8,6 +8,7 @@ class ServerConfig {
   ServerConfig()
       : ip_(""),
         port_(0),
+        log_path_(""),
         sock_timeout_sec_(2),
         epoller_max_event_(2000),
         epoller_timeout_ms_(5),
@@ -25,6 +26,9 @@ class ServerConfig {
 
   void SetPort(uint16_t port) { port_ = port; }
   uint16_t GetPort() const { return port_; }
+
+  void SetLogPath(const std::string &log_path) { log_path_ = log_path; }
+  const std::string &GetLogPath() const { return log_path_; }
 
   void SetSockTimeoutSec(int sock_timeout_sec) {
     sock_timeout_sec_ = sock_timeout_sec;
@@ -72,6 +76,7 @@ class ServerConfig {
  protected:
   std::string ip_;
   uint16_t port_;
+  std::string log_path_;
   int sock_timeout_sec_;
   int epoller_max_event_;
   int epoller_timeout_ms_;

@@ -6,7 +6,9 @@
 
 namespace webkit {
 BytePacket::BytePacket()
-    : buffer_(nullptr), capacity_(0), write_pos_(0), read_pos_(0) {}
+    : buffer_(nullptr), capacity_(128), write_pos_(0), read_pos_(0) {
+  ExpandIfNoSpace(capacity_);
+}
 
 BytePacket::~BytePacket() { delete[] buffer_; }
 

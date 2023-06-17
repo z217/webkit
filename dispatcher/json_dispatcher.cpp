@@ -1,39 +1,52 @@
 #include "json_dispatcher.h"
 
+#include "packet/string_serialization.h"
 #include "third_party/json/include/nlohmann/json.hpp"
 #include "util/trace_helper.h"
 #include "webkit/logger.h"
 
+#define JSON_MUST_GET(JSON, FIELD, VALUE)                                      \
+  do {                                                                         \
+    try {                                                                      \
+      (VALUE) = (JSON)[(FIELD)];                                               \
+    } catch (nlohmann::json::type_error &) {                                   \
+      WEBKIT_LOGERROR("req json get %s type error", FIELD);                    \
+      return Status::Error(StatusCode::eJsonTypeError, "req json type error"); \
+    } catch (nlohmann::json::parse_error &) {                                  \
+      WEBKIT_LOGERROR("req json get %s parse error", FIELD);                   \
+      return Status::Error(StatusCode::eJsonParseError,                        \
+                           "req json parse error");                            \
+    }                                                                          \
+  } while (false)
+
 namespace webkit {
 Status JsonDispatcher::Dispatch(Packet *packet) {
-  Status s;
-  size_t data_size = packet->GetRemainDataSize();
-  std::unique_ptr<char[]> buffer_up(new char[data_size]);
-
   TraceHelper::GetInstance()->ClearTraceId();
 
-  size_t read_size;
-  s = packet->Read(buffer_up.get(), data_size, read_size);
+  Status s;
+  std::string req;
+  StringParser req_parser(req);
+  s = req_parser.ParseFrom(*packet);
+  if (s.Code() == StatusCode::eRetry) return s;
   if (!s.Ok()) {
-    WEBKIT_LOGERROR("packet read error status code %d %s", s.Code(),
-                    s.Message());
-    return Status::Error(StatusCode::eDisptachError, "packet read error");
+    WEBKIT_LOGERROR(
+        "string parser parse from packet error status code %d message %s",
+        s.Code(), s.Message());
+    return Status::Error(StatusCode::eDisptachError, "parser parse from error");
   }
 
-  std::string payload_str(buffer_up.get(), read_size);
-
-  nlohmann::json payload_json =
-      nlohmann::json::parse(payload_str, nullptr, false);
-  if (payload_json.is_discarded()) {
+  nlohmann::json req_json = nlohmann::json::parse(req, nullptr, false);
+  if (req_json.is_discarded()) {
     WEBKIT_LOGERROR("parse request json error");
     return Status::Error(StatusCode::eDisptachError, "packet parse json error");
   }
-  const std::string &method_name = payload_json["method"];
-  const std::string &trace_id = payload_json["trace_id"];
-  TraceHelper::GetInstance()->SetTraceId(trace_id);
-  const std::string &req_data = payload_json["data"].dump();
+  WEBKIT_LOGDEBUG("recv req %s", req_json.dump());
+  std::string method_name;
+  nlohmann::json data_json;
+  JSON_MUST_GET(req_json, "method", method_name);
+  JSON_MUST_GET(req_json, "data", data_json);
+  std::string req_data = data_json.dump();
 
-  WEBKIT_LOGDEBUG("recv req %s", payload_str);
   std::string rsp_data;
   s = Forward(method_name, req_data, rsp_data);
   if (!s.Ok()) {
@@ -41,16 +54,17 @@ Status JsonDispatcher::Dispatch(Packet *packet) {
                     s.Code(), s.Message());
   }
 
-  std::string rsp_json = BuildRsp(s, rsp_data);
-  WEBKIT_LOGDEBUG("send rsp %s", rsp_json);
+  std::string rsp_json_str = BuildRsp(s, rsp_data);
+  WEBKIT_LOGDEBUG("send rsp %s", rsp_json_str);
 
-  size_t write_size;
-  s = packet->Write(rsp_json.data(), rsp_json.length(), write_size);
+  StringSerializer rsp_serializer(rsp_json_str);
+  s = rsp_serializer.SerializeTo(*packet);
   if (!s.Ok()) {
-    WEBKIT_LOGERROR("packet write error status code %d %s", s.Code(),
-                    s.Message());
+    WEBKIT_LOGERROR(
+        "string serializer serialize to error status code %d message %s",
+        s.Code(), s.Message());
     return Status::Error(StatusCode::eDisptachError,
-                         "dispatch packet write error");
+                         "serializer serialize to error");
   }
 
   return Status::OK();

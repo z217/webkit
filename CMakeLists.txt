@@ -26,6 +26,8 @@ set(WEBKIT_SOURCE_FILE
   logger/comm_logger.h
   packet/byte_packet.cpp
   packet/byte_packet.h
+  packet/string_serialization.cpp
+  packet/string_serialization.h
   pool/thread_pool.cpp
   pool/thread_pool.h
   reactor/epoll_event.cpp

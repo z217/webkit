@@ -78,8 +78,7 @@ int main(int argc, char *argv[]) {
   cli_config.SetPort(8080);
 
   JsonServerClient client(&cli_config);
-  std::string req =
-      "{\"method\":\"echo\",\"trace_id\":\"123456\",\"data\":{\"key\":\"a\"}}";
+  std::string req = "{\"method\":\"echo\",\"data\":{\"key\":\"a\"}}";
   std::string rsp;
   s = client.Echo(req, rsp);
   printf("rsp %s\n", rsp.c_str());

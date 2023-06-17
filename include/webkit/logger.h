@@ -15,7 +15,7 @@
       file_ptr++;                                                             \
     }                                                                         \
     webkit::Logger::GetDefaultInstance()->LogF(                               \
-        (LEVEL), fmt::sprintf("%s %s\n", "[%s] %s:%d %s", (FORMAT)),          \
+        (LEVEL), fmt::sprintf("%s %s\n", "[%s] %s:%d(%s)", (FORMAT)),         \
         webkit::Logger::LevelToString((LEVEL)), file_ptr, __LINE__, __func__, \
         ##__VA_ARGS__);                                                       \
   } while (false)

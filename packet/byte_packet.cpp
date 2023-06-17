@@ -27,6 +27,33 @@ Status BytePacket::Write(const void *src, size_t src_size, size_t &write_size) {
   return Status::OK();
 }
 
+Status BytePacket::Write(IoBase &other) {
+  Status s;
+  size_t write_size = 0;
+  size_t remain_size = GetRemainDataSize();
+
+  if (read_pos_ + remain_size > capacity_) {
+    size_t tail_size = capacity_ - read_pos_;
+    s = other.Write(buffer_ + read_pos_, tail_size, write_size);
+    read_pos_ = (read_pos_ + write_size) % capacity_;
+    if (!s.Ok()) return s;
+    if (write_size != tail_size) {
+      return Status::Debug(StatusCode::eRetry, "retry later");
+    }
+    remain_size -= tail_size;
+  }
+
+  write_size = 0;
+  s = other.Write(buffer_ + read_pos_, remain_size, write_size);
+  read_pos_ += write_size;
+  if (!s.Ok()) return s;
+  if (write_size != remain_size) {
+    return Status::Debug(StatusCode::eRetry, "retry later");
+  }
+
+  return Status::OK();
+}
+
 Status BytePacket::Read(void *dst, size_t dst_size, size_t &read_size) {
   size_t target_size = std::min(GetRemainDataSize(), dst_size);
   read_size = 0;
@@ -45,6 +72,32 @@ Status BytePacket::Read(void *dst, size_t dst_size, size_t &read_size) {
   return Status::OK();
 }
 
+Status BytePacket::Read(IoBase &other) {
+  Status s;
+  size_t read_size = 0;
+  size_t empty_size = GetRemainEmptySize();
+  if (empty_size == 0) {
+    ExpandIfNoSpace(capacity_);
+    empty_size = GetRemainEmptySize();
+  }
+
+  if (write_pos_ >= read_pos_) {
+    size_t tail_size = capacity_ - write_pos_;
+    s = other.Read(buffer_ + write_pos_, tail_size, read_size);
+    write_pos_ = (write_pos_ + read_size) % capacity_;
+    if (s.Code() == StatusCode::eNoData) return Status::OK();
+    if (s.Code() == StatusCode::eRetry) return s;
+    if (!s.Ok()) return s;
+    return Status::OK();
+  }
+
+  s = other.Read(buffer_, empty_size, read_size);
+  if (s.Code() == StatusCode::eNoData) return Status::OK();
+  if (s.Code() == StatusCode::eRetry) return s;
+  if (!s.Ok()) return s;
+  return Status::OK();
+}
+
 void BytePacket::Clear() {
   write_pos_ = 0;
   read_pos_ = 0;
@@ -54,6 +107,17 @@ size_t BytePacket::GetRemainDataSize() const {
   if (capacity_ == 0) return 0;
   if (read_pos_ <= write_pos_) return write_pos_ - read_pos_;
   return write_pos_ + capacity_ - read_pos_;
+}
+
+size_t BytePacket::GetRemainEmptySize() const {
+  if (capacity_ == 0) return 0;
+  if (read_pos_ >= write_pos_) return read_pos_ - write_pos_;
+  return read_pos_ + capacity_ - write_pos_;
+}
+
+Status BytePacket::Expand(size_t expand_size) {
+  ExpandIfNoSpace(expand_size);
+  return Status::OK();
 }
 
 void BytePacket::ExpandIfNoSpace(size_t append_size) {

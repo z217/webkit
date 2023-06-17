@@ -1,6 +1,9 @@
 #include "json_server_client.h"
 
 #include "channel/tcp_channel.h"
+#include "packet/string_serialization.h"
+#include "util/generator.h"
+#include "util/trace_helper.h"
 #include "webkit/logger.h"
 
 using webkit::Status;
@@ -10,7 +13,10 @@ JsonServerClient::JsonServerClient(webkit::ClientConfig *config)
     : config_(config) {}
 
 Status JsonServerClient::Echo(const std::string &req, std::string &rsp) {
-  webkit::TcpChannel channel;
+  webkit::TraceHelper::GetInstance()->SetTraceId(
+      webkit::UidGenerator::GetInstance()->Generate());
+
+  webkit::TcpChannel channel(config_);
   Status s = channel.Open([&](std::string &ip, uint16_t &port) {
     ip = config_->GetIp();
     port = config_->GetPort();
@@ -21,21 +27,26 @@ Status JsonServerClient::Echo(const std::string &req, std::string &rsp) {
     return Status::Error(-1);
   }
 
-  size_t write_size;
-  s = channel.Write(req.data(), req.length(), write_size);
+  static constexpr int kRetryCount = 3;
+  webkit::StringSerializer req_serializer(req);
+  for (int i = 0; i < kRetryCount; i++) {
+    s = channel.Write(req_serializer);
+    if (s.Code() != webkit::StatusCode::eRetry) break;
+  }
   if (!s.Ok()) {
     WEBKIT_LOGERROR("channel write error");
     return Status::Error(-1);
   }
 
-  char buffer[128];
-  size_t read_size;
-  s = channel.Read(buffer, sizeof(buffer), read_size);
-  if (read_size == 0 && !s.Ok()) {
+  webkit::StringParser rsp_parser(rsp);
+  for (int i = 0; i < kRetryCount; i++) {
+    s = channel.Read(rsp_parser);
+    if (s.Code() != webkit::StatusCode::eRetry) break;
+  }
+  if (!s.Ok()) {
     WEBKIT_LOGERROR("channel read error");
     return Status::Error(-1);
   }
-  rsp.assign(buffer, read_size);
 
   return Status::OK();
 }

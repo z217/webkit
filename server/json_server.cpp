@@ -90,6 +90,10 @@ void JsonServer::RunIo(uint32_t thread_id,
           std::shared_ptr<Dispatcher> dispatcher_sp =
               DispatcherFactory::GetDefaultInstance()->Build();
           s = dispatcher_sp->Dispatch(event->GetPacket().get());
+          if (s.Code() == StatusCode::eRetry) {
+            WEBKIT_LOGDEBUG("dispatcher packet need more data");
+            return;
+          }
           if (!s.Ok()) {
             WEBKIT_LOGERROR("dispacher error status code %d message %s",
                             s.Code(), s.Message());

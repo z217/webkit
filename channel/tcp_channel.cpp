@@ -3,7 +3,11 @@
 #include "webkit/logger.h"
 
 namespace webkit {
-TcpChannel::TcpChannel(const ClientConfig *config) : config_(config) {}
+TcpChannel::TcpChannel(const ClientConfig *config)
+    : config_(config), packet_sp_(nullptr) {
+  packet_sp_ = PacketFactory::GetDefaultInstance()->Build();
+  packet_sp_->Expand(128);
+}
 
 Status TcpChannel::Open(
     std::function<Status(std::string &, uint16_t &)> route_func) {
@@ -35,52 +39,39 @@ Status TcpChannel::Open(
   return Status::OK();
 }
 
-Status TcpChannel::Write(const void *data, size_t data_size,
-                         size_t &write_size) {
+Status TcpChannel::Write(Serializer &serializer) {
   Status s;
-  write_size = 0;
-  while (write_size < data_size) {
-    size_t size = 0;
-    s = tcp_socket_.Write(
-        reinterpret_cast<const std::byte *>(data) + write_size,
-        data_size - write_size, size);
-    if (!s.Ok() && s.Code() != StatusCode::eSocketPeerClosed) {
-      WEBKIT_LOGERROR("tcp socket write error %d %s", s.Code(), s.Message());
-      return Status::Error(StatusCode::eChannelWriteError,
-                           "channel write error");
-    }
-    write_size += size;
-    if (write_size > data_size) {
-      WEBKIT_LOGFATAL(
-          "tcp socket write may have bug, data size is less than write size");
-      return Status::Error(StatusCode::eChannelWriteError,
-                           "channel write may have bug");
-    }
-    if (s.Code() == StatusCode::eSocketPeerClosed) break;
+  s = serializer.SerializeTo(*packet_sp_);
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("serialize to error code %d message %s", s.Code(),
+                    s.Message());
+    return Status::Error(StatusCode::eChannelWriteError, "channel write error");
   }
-  return Status::OK();
+  s = packet_sp_->Write(tcp_socket_);
+  if (s.Code() == StatusCode::eRetry) return s;
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("packet write tcp socket error code %d message %s",
+                    s.Code(), s.Message());
+    return Status::Error(StatusCode::eChannelWriteError, "channel write error");
+  }
+  return s;
 }
 
-Status TcpChannel::Read(void *buffer, size_t data_size, size_t &read_size) {
+Status TcpChannel::Read(Parser &parser) {
   Status s;
-  read_size = 0;
-  while (read_size < data_size) {
-    size_t size;
-    s = tcp_socket_.Read(reinterpret_cast<std::byte *>(buffer) + read_size,
-                         data_size - read_size, size);
-    if (s.Code() == StatusCode::eNoData) break;
-    if (!s.Ok() && s.Code() != StatusCode::eSocketPeerClosed) {
-      WEBKIT_LOGERROR("tcp socket read error %d %s", s.Code(), s.Message());
-      return Status::Error(StatusCode::eChannelReadError, "channel read error");
-    }
-    read_size += size;
-    if (read_size > data_size) {
-      WEBKIT_LOGFATAL(
-          "tcp socket read may have bug, data size is less than read size");
-      return Status::Error(StatusCode::eChannelReadError,
-                           "channel read may have bug");
-    }
-    if (s.Code() == StatusCode::eSocketPeerClosed) break;
+  s = packet_sp_->Read(tcp_socket_);
+  if (s.Code() == StatusCode::eRetry) return s;
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("packet read tcp socket error code %d message %s", s.Code(),
+                    s.Message());
+    return Status::Error(StatusCode::eChannelReadError, "channel read error");
+  }
+  s = parser.ParseFrom(*packet_sp_);
+  if (s.Code() == StatusCode::eRetry) return s;
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("packet read tcp socket error code %d message %s", s.Code(),
+                    s.Message());
+    return Status::Error(StatusCode::eChannelReadError, "channel read error");
   }
   return Status::OK();
 }

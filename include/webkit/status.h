@@ -49,11 +49,15 @@ enum WebkitCode {
 
   ePoolStopped = -701,
 
-  eSyscallDeamonError = -801,
-  eThreadKeyError = -802,
-  eJsonParseError = -803,
-  eJsonNotFoundError = -804,
-  eJsonTypeError = -805,
+  eSerializeError = -801,
+  eParseError = -802,
+
+  eJsonParseError = -903,
+  eJsonNotFoundError = -904,
+  eJsonTypeError = -905,
+
+  eSyscallDeamonError = -1001,
+  eThreadKeyError = -1002,
 };
 }
 

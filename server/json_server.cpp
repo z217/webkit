@@ -79,10 +79,7 @@ void JsonServer::RunIo(uint32_t thread_id,
         s = worker_pool_->Submit([&] {
           Status s;
 
-          for (int i = 0; i < 3; i++) {
-            s = event->Recv();
-            if (s.Code() != StatusCode::eRetry) break;
-          }
+          s = event->Recv();
           if (!s.Ok()) {
             WEBKIT_LOGERROR("event recv error status code %d message %s",
                             s.Code(), s.Message());
@@ -118,10 +115,7 @@ void JsonServer::RunIo(uint32_t thread_id,
         s = worker_pool_->Submit([&] {
           Status s;
 
-          for (int i = 0; i < 3; i++) {
-            s = event->Send();
-            if (s.Code() != StatusCode::eRetry) break;
-          }
+          s = event->Send();
           if (!s.Ok()) {
             WEBKIT_LOGERROR("event send error status code %d message %s",
                             s.Code(), s.Message());

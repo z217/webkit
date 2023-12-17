@@ -8,6 +8,15 @@
 namespace webkit {
 template <typename T>
 class CircularQueue {
+ protected:
+  enum class State {
+    eDefault = 0,
+    eEmpty = 1,
+    eWriting = 2,
+    eReading = 3,
+    eOk = 4,
+  };
+
  public:
   CircularQueue(size_t capacity);
 
@@ -26,69 +35,72 @@ class CircularQueue {
   bool IsEmpty() const;
 
  private:
-  T *buffer_;
+  State *state_buffer_;
+  T *data_buffer_;
   size_t capacity_;
-  size_t size_;
-  size_t write_pos_;
-  size_t read_pos_;
-  std::atomic<size_t> next_write_pos_;
-  std::atomic<size_t> next_read_pos_;
+  std::atomic<size_t> head_;
+  std::atomic<size_t> tail_;
 };
 
 template <typename T>
 CircularQueue<T>::CircularQueue(size_t capacity)
-    : buffer_(new T[capacity]),
+    : state_buffer_(new State[capacity]),
+      data_buffer_(new T[capacity]),
       capacity_(capacity),
-      size_(0),
-      write_pos_(0),
-      read_pos_(capacity),
-      next_write_pos_(0),
-      next_read_pos_(capacity) {}
+      head_(0),
+      tail_(0) {}
 
 template <typename T>
 CircularQueue<T>::~CircularQueue() {
-  delete[] buffer_;
+  delete[] state_buffer_;
+  delete[] data_buffer_;
 }
 
 template <typename T>
 Status CircularQueue<T>::Push(const T &value) {
-  if (IsFull()) {
-    return Status::Error(StatusCode::eCircularQueueFull,
-                         "circular queue is full");
+  size_t idx;
+  while (true) {
+    idx = tail_.load(std::memory_order_acquire);
+    if (IsFull()) {
+      return Status::Error(StatusCode::eCircularQueueFull,
+                           "circular queue is full");
+    }
+    if (tail_.compare_exchange_strong(idx, (idx + 1) % capacity_,
+                                      std::memory_order_release,
+                                      std::memory_order_acquire)) {
+      idx = (idx + 1) % capacity_;
+      break;
+    }
   }
-  size_t next_write_pos = next_write_pos_.load();
-  if (next_write_pos != write_pos_ ||
-      !next_write_pos_.compare_exchange_strong(
-          next_write_pos, (next_write_pos + 1) % capacity_)) {
-    return Status::Error(StatusCode::eCircularConcurFail,
-                         "circular queue is being written by other");
-  }
-  next_write_pos = next_write_pos_.load();
-  assert((write_pos_ + 1) % capacity_ == next_write_pos);
-  buffer_[next_write_pos] = value;
-  write_pos_ = next_write_pos;
-  size_++;
+  state_buffer_[idx] = State::eWriting;
+  assert(state_buffer_[idx] == State::eWriting);
+  data_buffer_[idx] = value;
+  assert(state_buffer_[idx] == State::eWriting);
+  state_buffer_[idx] = State::eOk;
   return Status::OK();
 }
 
 template <typename T>
 Status CircularQueue<T>::Pop(T &data) {
-  if (IsEmpty()) {
-    return Status::Error(StatusCode::eCircularQueueEmpty,
-                         "circular queue is empty");
+  size_t idx;
+  while (true) {
+    idx = head_.load(std::memory_order_acquire);
+    if (IsEmpty()) {
+      return Status::Error(StatusCode::eCircularQueueEmpty,
+                           "circular queue is empty");
+    }
+    if (head_.compare_exchange_strong(idx, (idx + 1) % capacity_,
+                                      std::memory_order_release,
+                                      std::memory_order_acquire)) {
+      idx = (idx + 1) % capacity_;
+      break;
+    }
   }
-  size_t next_read_pos = next_read_pos_.load();
-  if (next_read_pos != read_pos_ ||
-      !next_read_pos_.compare_exchange_strong(
-          next_read_pos, (next_read_pos + 1) % capacity_)) {
-    return Status::Error(StatusCode::eCircularConcurFail,
-                         "circular queue is being written by other");
-  }
-  next_read_pos = next_read_pos_.load();
-  assert((read_pos_ + 1) % capacity_ == next_read_pos);
-  data = buffer_[next_read_pos];
-  read_pos_ = next_read_pos;
-  size_--;
+  state_buffer_[idx] = State::eReading;
+  assert(state_buffer_[idx] == State::eReading);
+  data = data_buffer_[idx];
+  assert(state_buffer_[idx] == State::eReading);
+  state_buffer_[idx] = State::eEmpty;
   return Status::OK();
 }
 
@@ -99,16 +111,23 @@ size_t CircularQueue<T>::Capacity() const {
 
 template <typename T>
 size_t CircularQueue<T>::Size() const {
-  return size_;
+  size_t head = head_.load(std::memory_order_acquire);
+  size_t tail = tail_.load(std::memory_order_acquire);
+  if (head < tail) return tail - head;
+  if (tail > head) return head + capacity_ - tail;
+  if (state_buffer_[tail] == State::eOk) {
+    return capacity_;
+  }
+  return 0;
 }
 
 template <typename T>
 bool CircularQueue<T>::IsFull() const {
-  return capacity_ == size_;
+  return Size() == Capacity();
 }
 
 template <typename T>
 bool CircularQueue<T>::IsEmpty() const {
-  return size_ == 0;
+  return Size() == 0;
 }
 }  // namespace webkit

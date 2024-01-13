@@ -14,8 +14,6 @@
 #include "server/thread_server.h"
 #include "util/syscall.h"
 
-using namespace std::literals;
-
 static bool IsMainRunning = true;
 
 static void RegisterSignalHandler() {
@@ -81,7 +79,8 @@ int main(int argc, char *argv[]) {
 
   WEBKIT_LOGINFO("json server is running");
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
+  using namespace std::literals;
+  std::this_thread::sleep_for(1s);
 
   webkit::ClientConfig cli_config;
   cli_config.SetIp("127.0.0.1");

@@ -54,11 +54,11 @@ class Logger : public InstanceBase<Logger> {
   virtual void Log(Level level, const std::string &message) = 0;
 
   template <typename... Args>
-  void LogF(Level level, const std::string &format, const Args &...args) {
+  void LogF(Level level, const std::string &format, Args &&...args) {
     using namespace std::string_literals;
     if (!IsLogEnable(level)) return;
-    Log(level, fmt::sprintf("%s"s + format + "%s"s, GetPrefix(), args...,
-                            GetSuffix()));
+    Log(level, fmt::sprintf("%s"s + format + "%s"s, GetPrefix(),
+                            std::forward<Args>(args)..., GetSuffix()));
   }
 
   virtual std::string GetPrefix() { return ""; }
@@ -82,8 +82,8 @@ class Logger : public InstanceBase<Logger> {
   }
 
   template <typename... Args>
-  static void DebugF(const std::string &format, const Args &...args) {
-    GetDefaultInstance()->LogF(eDebug, format, args...);
+  static void DebugF(const std::string &format, Args &&...args) {
+    GetDefaultInstance()->LogF(eDebug, format, std::forward<Args>(args)...);
   }
 
   static void Info(const std::string &message) {
@@ -91,8 +91,8 @@ class Logger : public InstanceBase<Logger> {
   }
 
   template <typename... Args>
-  static void InfoF(const std::string &format, const Args &...args) {
-    GetDefaultInstance()->LogF(eInfo, format, args...);
+  static void InfoF(const std::string &format, Args &&...args) {
+    GetDefaultInstance()->LogF(eInfo, format, std::forward<Args>(args)...);
   }
 
   static void Warn(const std::string &message) {
@@ -100,8 +100,8 @@ class Logger : public InstanceBase<Logger> {
   }
 
   template <typename... Args>
-  static void WarnF(const std::string &format, const Args &...args) {
-    GetDefaultInstance()->Log(eWarn, format, args...);
+  static void WarnF(const std::string &format, Args &&...args) {
+    GetDefaultInstance()->Log(eWarn, format, std::forward<Args>(args)...);
   }
 
   static void Error(const std::string &message) {
@@ -109,8 +109,8 @@ class Logger : public InstanceBase<Logger> {
   }
 
   template <typename... Args>
-  static void ErrorF(const std::string &format, const Args &...args) {
-    GetDefaultInstance()->LogF(eError, format, args...);
+  static void ErrorF(const std::string &format, Args &&...args) {
+    GetDefaultInstance()->LogF(eError, format, std::forward<Args>(args)...);
   }
 
   static void Fatal(const std::string &message) {
@@ -118,8 +118,8 @@ class Logger : public InstanceBase<Logger> {
   }
 
   template <typename... Args>
-  static void FatalF(const std::string &format, const Args &...args) {
-    GetDefaultInstance()->LogF(eFatal, format, args...);
+  static void FatalF(const std::string &format, Args &&...args) {
+    GetDefaultInstance()->LogF(eFatal, format, std::forward<Args>(args)...);
   }
 
   static std::string LevelToString(Level level) {

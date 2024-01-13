@@ -88,7 +88,7 @@ class Status {
 
   std::string ToString() const {
     if (Ok()) return "status ok";
-    return fmt::sprintf("[%s] status code %d message %s", TypeToString(type_),
+    return fmt::sprintf("[%s] status code: %d message: %s", TypeToString(type_),
                         code_, message_);
   }
 
@@ -99,8 +99,9 @@ class Status {
   }
 
   template <typename... Args>
-  static Status DebugF(int code, const char *format, const Args &...args) {
-    return Status(eDebug, code, fmt::sprintf(format, args...));
+  static Status DebugF(int code, const char *format, Args &&...args) {
+    return Status(eDebug, code,
+                  fmt::sprintf(format, std::forward<Args>(args)...));
   }
 
   static Status Warn(int code, const std::string &message = "") {
@@ -108,8 +109,9 @@ class Status {
   }
 
   template <typename... Args>
-  static Status WarnF(int code, const char *format, const Args &...args) {
-    return Status(eWarn, code, fmt::sprintf(format, args...));
+  static Status WarnF(int code, const char *format, Args &&...args) {
+    return Status(eWarn, code,
+                  fmt::sprintf(format, std::forward<Args>(args)...));
   }
 
   static Status Error(int code, const std::string &message = "") {
@@ -117,8 +119,9 @@ class Status {
   }
 
   template <typename... Args>
-  static Status ErrorF(int code, const char *format, const Args &...args) {
-    return Status(eError, code, fmt::sprintf(format, args...));
+  static Status ErrorF(int code, const char *format, Args &&...args) {
+    return Status(eError, code,
+                  fmt::sprintf(format, std::forward<Args>(args)...));
   }
 
   static Status Fatal(int code, const std::string &message = "") {
@@ -126,8 +129,8 @@ class Status {
   }
 
   template <typename... Args>
-  static Status FatalF(int code, const char *format, const Args &...args) {
-    return Status(eFatal, code, fmt::sprintf(format, args...));
+  static Status FatalF(int code, const char *format, Args &&...args) {
+    return Status(eFatal, code, fmt::sprintf(format, std::forward<Args>(args)...));
   }
 
  private:

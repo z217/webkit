@@ -15,11 +15,7 @@ class Packet : public IoBase {
 
   using IoBase::Write;
 
-  virtual Status Write(IoBase &other) = 0;
-
   using IoBase::Read;
-
-  virtual Status Read(IoBase &other) = 0;
 
   virtual void Clear() = 0;
 

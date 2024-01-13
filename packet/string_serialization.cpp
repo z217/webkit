@@ -78,15 +78,6 @@ Status StringParser::ParseFrom(Packet &packet) {
     WEBKIT_LOGDEBUG("receive packet message length %zu",
                     meta_info_.message_length);
   }
-  if (packet.GetRemainDataSize() < str_.length()) {
-    Status s = packet.Expand(sizeof(MetaInfo));
-    if (!s.Ok()) {
-      WEBKIT_LOGERROR("packet expand size %zu error code %d message %s",
-                      sizeof(MetaInfo), s.Code(), s.Message());
-      return Status::Error(StatusCode::eParseError, "packet expand error");
-    }
-    return Status::Debug(StatusCode::eRetry, "retry later");
-  }
   PACKET_READ_RETURN_IF_ERROR(packet, &str_[0], str_.length());
   return Status::OK();
 }

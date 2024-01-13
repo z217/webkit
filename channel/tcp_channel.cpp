@@ -1,6 +1,7 @@
 #include "tcp_channel.h"
 
 #include "webkit/logger.h"
+#include "webkit/protocol_adapter.h"
 
 namespace webkit {
 TcpChannel::TcpChannel(const ClientConfig *config)
@@ -47,7 +48,10 @@ Status TcpChannel::Write(Serializer &serializer) {
                     s.Message());
     return Status::Error(StatusCode::eChannelWriteError, "channel write error");
   }
-  s = packet_sp_->Write(tcp_socket_);
+  std::shared_ptr<ProtocolAdapter> adapter_sp =
+      ProtocolAdapterFactory::GetDefaultInstance()->Build(
+          *packet_sp_, tcp_socket_, packet_sp_->GetRemainDataSize());
+  s = adapter_sp->AdaptTo();
   if (s.Code() == StatusCode::eRetry) return s;
   if (!s.Ok()) {
     WEBKIT_LOGERROR("packet write tcp socket error code %d message %s",
@@ -58,8 +62,10 @@ Status TcpChannel::Write(Serializer &serializer) {
 }
 
 Status TcpChannel::Read(Parser &parser) {
-  Status s;
-  s = packet_sp_->Read(tcp_socket_);
+  std::shared_ptr<ProtocolAdapter> adapter_sp =
+      ProtocolAdapterFactory::GetDefaultInstance()->Build(*packet_sp_,
+                                                          tcp_socket_, 0);
+  Status s = adapter_sp->AdaptFrom();
   if (s.Code() == StatusCode::eRetry) return s;
   if (!s.Ok()) {
     WEBKIT_LOGERROR("packet read tcp socket error code %d message %s", s.Code(),

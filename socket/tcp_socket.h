@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "webkit/socket.h"
 #include "webkit/status.h"
 
@@ -18,9 +20,13 @@ class TcpSocket : public Socket {
 
   Status Accept(TcpSocket *socket);
 
-  Status Write(const void *data, size_t data_size, size_t &write_size) override;
+  Status Write(const void *src, size_t src_size, size_t &write_size) override;
 
-  Status Read(void *buffer, size_t buffer_size, size_t &read_size) override;
+  Status Write(IoBase &dst, size_t dst_size, size_t &write_size) override;
+
+  Status Read(void *dst, size_t dst_size, size_t &read_size) override;
+
+  Status Read(IoBase &src, size_t src_size, size_t &read_size) override;
 
   Status Close() override;
 
@@ -39,9 +45,16 @@ class TcpSocket : public Socket {
  private:
   Status SetLinger(bool is_on, int linger_time);
 
+  Status ReadToBuffer(size_t data_size, size_t &read_size);
+
+  Status WriteFromBuffer(size_t data_size, size_t &write_size);
+
+  void BufferPop(size_t size);
+
   int fd_;
   std::string ip_;
   uint16_t port_;
   bool is_connected_;
+  std::vector<std::byte> buffer_;
 };
 }  // namespace webkit

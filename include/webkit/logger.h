@@ -123,8 +123,12 @@ class Logger : public InstanceBase<Logger> {
   }
 
   static std::string LevelToString(Level level) {
-    static constexpr const char *level_strings[]{"",     "Debug", "Info",
-                                                 "Warn", "Error", "Fatal"};
+    static constexpr const char *level_strings[]{"",
+                                                 "\x1B[32mDebug\x1B[0m",
+                                                 "\x1B[32mInfo\x1B[0m",
+                                                 "\x1B[33mWarn\x1B[0m",
+                                                 "\x1B[31mError\x1B[0m",
+                                                 "\x1B[31mFatal\x1B[0m"};
     return level_strings[level];
   }
 

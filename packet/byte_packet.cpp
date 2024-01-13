@@ -23,32 +23,34 @@ Status BytePacket::Write(const void *src, size_t src_size, size_t &write_size) {
   memcpy(buffer_ + write_pos_,
          reinterpret_cast<const std::byte *>(src) + write_size, src_size);
   write_size += src_size;
-  write_pos_ = (write_pos_ + src_size) % capacity_;
+  write_pos_ += src_size;
   return Status::OK();
 }
 
-Status BytePacket::Write(IoBase &other) {
-  Status s;
-  size_t write_size = 0;
-  size_t remain_size = GetRemainDataSize();
-
-  if (read_pos_ + remain_size > capacity_) {
-    size_t tail_size = capacity_ - read_pos_;
-    s = other.Write(buffer_ + read_pos_, tail_size, write_size);
-    read_pos_ = (read_pos_ + write_size) % capacity_;
-    if (!s.Ok()) return s;
-    if (write_size != tail_size) {
-      return Status::Debug(StatusCode::eRetry, "retry later");
-    }
-    remain_size -= tail_size;
-  }
-
+Status BytePacket::Write(IoBase &src, size_t src_size, size_t &write_size) {
+  ExpandIfNoSpace(src_size);
   write_size = 0;
-  s = other.Write(buffer_ + read_pos_, remain_size, write_size);
-  read_pos_ += write_size;
-  if (!s.Ok()) return s;
-  if (write_size != remain_size) {
-    return Status::Debug(StatusCode::eRetry, "retry later");
+  if (write_pos_ + src_size > capacity_) {
+    size_t tail_size = capacity_ - write_pos_;
+    size_t read_size = 0;
+    Status s = src.Read(buffer_ + write_pos_, tail_size, read_size);
+    write_pos_ = (write_pos_ + read_size) % capacity_;
+    src_size -= read_size;
+    write_size += read_size;
+    if (!s.Ok() || tail_size != read_size) {
+      WEBKIT_LOGERROR("read src expect %zu get %zu status code %d message %s",
+                      tail_size, read_size, s.Code(), s.Message());
+      return s;
+    }
+  }
+  size_t read_size = 0;
+  Status s = src.Read(buffer_ + write_pos_, src_size, read_size);
+  write_size += read_size;
+  write_pos_ += read_size;
+  if (!s.Ok() || src_size != read_size) {
+    WEBKIT_LOGERROR("read src expect %zu get %zu status code %d message %s",
+                    src_size, read_size, s.Code(), s.Message());
+    return s;
   }
 
   return Status::OK();
@@ -72,29 +74,33 @@ Status BytePacket::Read(void *dst, size_t dst_size, size_t &read_size) {
   return Status::OK();
 }
 
-Status BytePacket::Read(IoBase &other) {
-  Status s;
-  size_t read_size = 0;
-  size_t empty_size = GetRemainEmptySize();
-  if (empty_size == 0) {
-    ExpandIfNoSpace(capacity_);
-    empty_size = GetRemainEmptySize();
+Status BytePacket::Read(IoBase &dst, size_t dst_size, size_t &read_size) {
+  size_t data_size = std::min(GetRemainDataSize(), dst_size);
+  read_size = 0;
+  if (data_size == 0) return Status::OK();
+  if (read_pos_ + data_size > capacity_) {
+    size_t tail_size = capacity_ - read_pos_;
+    size_t write_size = 0;
+    Status s = dst.Write(buffer_ + read_pos_, tail_size, write_size);
+    read_pos_ = (read_pos_ + write_size) % capacity_;
+    data_size -= write_size;
+    read_size += write_size;
+    if (!s.Ok() || write_size != tail_size) {
+      WEBKIT_LOGERROR("write dst expect %zu get %zu status code %d message %s",
+                      tail_size, write_size, s.Code(), s.Message());
+      return s;
+    }
+  }
+  size_t write_size = 0;
+  Status s = dst.Write(buffer_ + read_pos_, data_size, write_size);
+  read_pos_ += write_size;
+  read_size += write_size;
+  if (!s.Ok() || write_size != data_size) {
+    WEBKIT_LOGERROR("write dst expect %zu get %zu status code %d message %s",
+                    data_size, write_size, s.Code(), s.Message());
+    return s;
   }
 
-  if (write_pos_ >= read_pos_) {
-    size_t tail_size = capacity_ - write_pos_;
-    s = other.Read(buffer_ + write_pos_, tail_size, read_size);
-    write_pos_ = (write_pos_ + read_size) % capacity_;
-    if (s.Code() == StatusCode::eNoData) return Status::OK();
-    if (s.Code() == StatusCode::eRetry) return s;
-    if (!s.Ok()) return s;
-    return Status::OK();
-  }
-
-  s = other.Read(buffer_, empty_size, read_size);
-  if (s.Code() == StatusCode::eNoData) return Status::OK();
-  if (s.Code() == StatusCode::eRetry) return s;
-  if (!s.Ok()) return s;
   return Status::OK();
 }
 

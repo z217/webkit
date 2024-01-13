@@ -13,11 +13,11 @@ class BytePacket : public Packet {
 
   Status Write(const void *src, size_t src_size, size_t &write_size) override;
 
-  Status Write(IoBase &other) override;
+  Status Write(IoBase &src, size_t src_size, size_t &write_size) override;
 
   Status Read(void *dst, size_t dst_size, size_t &read_size) override;
 
-  Status Read(IoBase &other) override;
+  Status Read(IoBase &dst, size_t dst_size, size_t &read_size) override;
 
   void Clear() override;
 

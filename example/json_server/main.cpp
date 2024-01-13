@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <thread>
 
+#include "channel/simple_adapter.h"
 #include "json_server_client.h"
 #include "json_server_dispatcher.h"
 #include "logger/chain_logger.h"
@@ -40,6 +41,9 @@ int main(int argc, char *argv[]) {
   webkit::Logger::SetDefaultInstance(&chain_logger);
   webkit::Logger::SetLogLevel(webkit::Logger::eDebug);
 
+  webkit::SimpleAdapterFactory adapter_factory;
+  webkit::ProtocolAdapterFactory::SetDefaultInstance(&adapter_factory);
+
   webkit::EpollerFactory epoller_factory(&config);
   webkit::ReactorFactory::SetDefaultInstance(&epoller_factory);
 
@@ -68,7 +72,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  WEBKIT_LOGERROR("json server is running");
+  WEBKIT_LOGINFO("json server is running");
 
   webkit::Signal(SIGKILL, [](int) { IsMainRunning = false; });
   std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -84,6 +88,6 @@ int main(int argc, char *argv[]) {
   printf("rsp %s\n", rsp.c_str());
 
   server.Stop();
-  WEBKIT_LOGERROR("json server stopped");
+  WEBKIT_LOGINFO("json server stopped");
   return 0;
 }

@@ -10,6 +10,10 @@ class Socket : public IoBase {
 
   virtual ~Socket() = default;
 
+  using IoBase::Write;
+
+  using IoBase::Read;
+
   virtual Status Close() = 0;
 
   virtual int GetFd() = 0;

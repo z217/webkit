@@ -56,8 +56,10 @@ enum WebkitCode {
   eJsonNotFoundError = -904,
   eJsonTypeError = -905,
 
-  eSyscallDeamonError = -1001,
-  eThreadKeyError = -1002,
+  eAdapterVersionError = -1001,
+
+  eSyscallDeamonError = -1101,
+  eThreadKeyError = -1102,
 };
 }
 

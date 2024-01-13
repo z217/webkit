@@ -5,10 +5,12 @@
 #include "webkit/serialization.h"
 
 namespace webkit {
-struct __attribute__((packed)) MetaInfo {
+#pragma pack(push, 1)
+struct MetaInfo {
   size_t message_length;
   char trace_id[32];
 };
+#pragma pack(pop)
 
 class StringSerializer : public Serializer {
  public:

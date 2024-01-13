@@ -11,12 +11,19 @@
 #include "packet/byte_packet.h"
 #include "pool/thread_pool.h"
 #include "reactor/epoller.h"
-#include "server/json_server.h"
+#include "server/thread_server.h"
 #include "util/syscall.h"
 
 using namespace std::literals;
 
 static bool IsMainRunning = true;
+
+static void RegisterSignalHandler() {
+  auto stop_func = [](int) { IsMainRunning = false; };
+  webkit::Signal(SIGKILL, stop_func);
+  webkit::Signal(SIGUSR1, stop_func);
+  webkit::Signal(SIGINT, stop_func);
+}
 
 int main(int argc, char *argv[]) {
   webkit::ServerConfig config;
@@ -58,7 +65,7 @@ int main(int argc, char *argv[]) {
   JsonServerDispatcherFactory dispatcher_factory;
   webkit::DispatcherFactory::SetDefaultInstance(&dispatcher_factory);
 
-  webkit::JsonServer server(&config);
+  webkit::ThreadServer server(&config);
   s = server.Init();
   if (!s.Ok()) {
     printf("server init error status code %d message %s\n", s.Code(),
@@ -74,7 +81,6 @@ int main(int argc, char *argv[]) {
 
   WEBKIT_LOGINFO("json server is running");
 
-  webkit::Signal(SIGKILL, [](int) { IsMainRunning = false; });
   std::this_thread::sleep_for(std::chrono::seconds(1));
 
   webkit::ClientConfig cli_config;

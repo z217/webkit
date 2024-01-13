@@ -36,8 +36,8 @@ set(WEBKIT_SOURCE_FILE
   reactor/epoll_event.h
   reactor/epoller.cpp
   reactor/epoller.h
-  server/json_server.cpp
-  server/json_server.h
+  server/thread_server.cpp
+  server/thread_server.h
   socket/tcp_socket.cpp
   socket/tcp_socket.h
   util/circular_queue.h
@@ -62,7 +62,7 @@ target_link_libraries(webkit PUBLIC ${THIRD_PARTY_LIB})
 add_subdirectory(example/json_server)
 
 set(WEBKIT_INSTALL_LIBDIR ${PROJECT_SOURCE_DIR}/target/lib)
-set(WEBKIT_INSTALL_INCLUDEDIR ${PROJECT_SOURCE_DIR}/target/include)
+set(WEBKIT_INSTALL_INCLUDEDIR ${PROJECT_SOURCE_DIR}/target)
 
 set_target_properties(webkit PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY ${WEBKIT_INSTALL_LIBDIR}

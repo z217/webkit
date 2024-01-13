@@ -9,11 +9,11 @@
 #include "webkit/server_config.h"
 
 namespace webkit {
-class JsonServer {
+class ThreadServer {
  public:
-  JsonServer(const ServerConfig *config);
+  ThreadServer(const ServerConfig *config);
 
-  ~JsonServer();
+  ~ThreadServer();
 
   Status Init();
 

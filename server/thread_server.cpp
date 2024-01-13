@@ -1,29 +1,24 @@
-#include "json_server.h"
+#include "thread_server.h"
 
-#include <fcntl.h>
-
-#include <chrono>
-
-#include "dispatcher/json_dispatcher.h"
 #include "socket/tcp_socket.h"
+#include "webkit/dispatcher.h"
 #include "webkit/logger.h"
 #include "webkit/packet.h"
 
-using namespace std::literals;
-
 namespace webkit {
-JsonServer::JsonServer(const ServerConfig *config)
+ThreadServer::ThreadServer(const ServerConfig *config)
     : config_(config),
       worker_pool_(nullptr),
       event_queue_(nullptr),
       is_running_(false) {}
 
-JsonServer::~JsonServer() {
+ThreadServer::~ThreadServer() {
+  if (is_running_) Stop();
   delete event_queue_;
   delete event_free_queue_;
 }
 
-Status JsonServer::Init() {
+Status ThreadServer::Init() {
   worker_pool_ = PoolFactory::GetDefaultInstance()->Build();
   event_queue_ =
       new CircularQueue<std::shared_ptr<Event>>(config_->GetMaxConnection());
@@ -32,7 +27,7 @@ Status JsonServer::Init() {
   return Status::OK();
 }
 
-Status JsonServer::Run() {
+Status ThreadServer::Run() {
   is_running_ = true;
   worker_pool_->Run();
 
@@ -49,7 +44,7 @@ Status JsonServer::Run() {
   return Status::OK();
 }
 
-void JsonServer::Stop() {
+void ThreadServer::Stop() {
   is_running_ = false;
   accept_thread_.join();
   for (std::thread &t : io_thread_vec_) t.join();
@@ -57,8 +52,8 @@ void JsonServer::Stop() {
   worker_pool_->Stop();
 }
 
-void JsonServer::RunIo(uint32_t thread_id,
-                       std::shared_ptr<Reactor> reactor_sp) {
+void ThreadServer::RunIo(uint32_t thread_id,
+                         std::shared_ptr<Reactor> reactor_sp) {
   Status s;
 
   while (is_running_) {
@@ -131,7 +126,7 @@ void JsonServer::RunIo(uint32_t thread_id,
   }
 }
 
-void JsonServer::RunAccept(
+void ThreadServer::RunAccept(
     std::vector<std::shared_ptr<Reactor>> reactor_sp_vec) {
   Status s;
 
@@ -143,6 +138,7 @@ void JsonServer::RunAccept(
     return;
   }
 
+  // TODO: non blocking accept
   size_t cur_reactor_idx = 0;
   while (is_running_) {
     auto cli_socket_sp = std::make_shared<TcpSocket>();
@@ -213,7 +209,7 @@ void JsonServer::RunAccept(
   socket.Close();
 }
 
-Status JsonServer::FreeEvent(std::shared_ptr<Event> event_sp) {
+Status ThreadServer::FreeEvent(std::shared_ptr<Event> event_sp) {
   if (event_sp == nullptr) return Status::OK();
   Status s;
   s = event_sp->DelFromReactor();

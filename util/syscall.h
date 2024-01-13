@@ -7,9 +7,9 @@
 #include "webkit/status.h"
 
 namespace webkit {
-using SignalFuncType = void(int);
+using SignalFuncType = void (*)(int);
 
-SignalFuncType *Signal(int signo, SignalFuncType *func) {
+SignalFuncType Signal(int signo, SignalFuncType func) {
   struct sigaction act;
   act.sa_handler = func;
   sigemptyset(&act.sa_mask);

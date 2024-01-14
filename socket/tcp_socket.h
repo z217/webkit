@@ -34,7 +34,9 @@ class TcpSocket : public Socket {
 
   Status SetTimeout(suseconds_t timeout_sec = 2, suseconds_t timeout_us = 0);
 
-  int GetFd() override;
+  Status SetLinger(bool is_on, int linger_time);
+
+  int GetFd() const override;
 
   bool IsConnected() const;
 
@@ -43,8 +45,6 @@ class TcpSocket : public Socket {
   uint16_t GetPort() const;
 
  private:
-  Status SetLinger(bool is_on, int linger_time);
-
   Status ReadToBuffer(size_t data_size, size_t &read_size);
 
   Status WriteFromBuffer(size_t data_size, size_t &write_size);

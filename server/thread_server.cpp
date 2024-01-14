@@ -138,7 +138,6 @@ void ThreadServer::RunAccept(
     return;
   }
 
-  // TODO: non blocking accept
   size_t cur_reactor_idx = 0;
   while (is_running_) {
     auto cli_socket_sp = std::make_shared<TcpSocket>();

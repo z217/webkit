@@ -70,7 +70,15 @@ Status TcpSocket::Listen(const std::string &ip, uint16_t port) {
                          "socket connect error");
   }
 
-  int ret = 0;
+  int reuseport = 1;
+  int ret = setsockopt(fd_, SOL_SOCKET, SO_REUSEPORT, &reuseport, sizeof(int));
+  if (ret < 0) {
+    WEBKIT_LOGERROR("tcp socket set SO_REUSEPORT error %d %s", errno,
+                    strerror(errno));
+    return Status::Error(StatusCode::eSocketOptError,
+                         "socket set sock opt error");
+  }
+
   sockaddr_in sin;
   memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
@@ -306,16 +314,8 @@ Status TcpSocket::SetTimeout(suseconds_t timeout_sec, suseconds_t timeout_us) {
                          "socket set sock ope error");
   }
 
-  return SetLinger(true, timeout_sec);
+  return Status::OK();
 }
-
-int TcpSocket::GetFd() { return fd_; }
-
-bool TcpSocket::IsConnected() const { return is_connected_; }
-
-const std::string &TcpSocket::GetIp() const { return ip_; }
-
-uint16_t TcpSocket::GetPort() const { return port_; }
 
 Status TcpSocket::SetLinger(bool is_on, int linger_sec) {
   if (!is_connected_) {
@@ -335,6 +335,14 @@ Status TcpSocket::SetLinger(bool is_on, int linger_sec) {
   }
   return Status::OK();
 }
+
+int TcpSocket::GetFd() const { return fd_; }
+
+bool TcpSocket::IsConnected() const { return is_connected_; }
+
+const std::string &TcpSocket::GetIp() const { return ip_; }
+
+uint16_t TcpSocket::GetPort() const { return port_; }
 
 Status TcpSocket::ReadToBuffer(size_t data_size, size_t &read_size) {
   size_t write_pos = buffer_.size();

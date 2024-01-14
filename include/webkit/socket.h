@@ -16,6 +16,6 @@ class Socket : public IoBase {
 
   virtual Status Close() = 0;
 
-  virtual int GetFd() = 0;
+  virtual int GetFd() const = 0;
 };
 }  // namespace webkit

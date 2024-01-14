@@ -1,29 +1,37 @@
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace webkit {
 class ClientConfig {
  public:
-  ClientConfig() : ip_(""), port_(0), sock_timeout_sec_(2) {}
+  struct Host {
+    std::string ip;
+    uint16_t port;
+  };
+
+  ClientConfig() : sock_timeout_sec_(2), sock_timeout_usec_(0) {}
 
   virtual ~ClientConfig() = default;
 
-  void SetIp(const std::string &ip) { ip_ = ip; }
-  const std::string &GetIp() const { return ip_; }
+  virtual void AddHost(Host host) { host_vec_.push_back(host); }
+  virtual const std::vector<Host> &GetHostVec() { return host_vec_; }
 
-  void SetPort(uint16_t port) { port_ = port; }
-  uint16_t GetPort() const { return port_; }
-
-  void SetSockTimeoutSec(int sock_timeout_sec) {
+  virtual void SetSockTimeoutSec(int sock_timeout_sec) {
     sock_timeout_sec_ = sock_timeout_sec;
   }
-  int GetSockTimeoutSec() const { return sock_timeout_sec_; }
+  virtual int GetSockTimeoutSec() const { return sock_timeout_sec_; }
+
+  virtual void SetSockTimeoutUsec(int sock_timeout_usec) {
+    sock_timeout_usec_ = sock_timeout_usec;
+  }
+  virtual int GetSockTimeoutUsec() const { return sock_timeout_usec_; }
 
  protected:
-  std::string ip_;
-  uint16_t port_;
+  std::vector<Host> host_vec_;
   int sock_timeout_sec_;
+  int sock_timeout_usec_;
 };
 }  // namespace webkit

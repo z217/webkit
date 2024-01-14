@@ -10,12 +10,10 @@ TcpChannel::TcpChannel(const ClientConfig *config)
   packet_sp_->Expand(128);
 }
 
-Status TcpChannel::Open(
-    std::function<Status(std::string &, uint16_t &)> route_func) {
-  Status s;
+Status TcpChannel::Open(Router &router) {
   std::string ip;
   uint16_t port;
-  s = route_func(ip, port);
+  Status s = router.Route(ip, port);
   if (!s.Ok()) {
     WEBKIT_LOGERROR("tcp channel open failed %d %s", s.Code(), s.Message());
     return Status::Error(StatusCode::eChannelRouteError, "channel route error");

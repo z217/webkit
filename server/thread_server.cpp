@@ -167,8 +167,10 @@ void ThreadServer::RunAccept(
     if (event_queue_->IsFull()) {
       WEBKIT_LOGFATAL(
           "server current connection reaches max limit %u, new connect is "
-          "dropped",
-          config_->GetMaxConnection());
+          "dropped, client %s:%d",
+          config_->GetMaxConnection(), cli_socket_sp->GetIp(),
+          cli_socket_sp->GetPort());
+      cli_socket_sp->Close();
       continue;
     }
 

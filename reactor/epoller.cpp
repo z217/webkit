@@ -42,8 +42,8 @@ Status Epoller::Delete(EpollEvent *event) {
   int ret = epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, event->GetSocket()->GetFd(),
                       event->GetEpollEvent());
   if (ret != 0) {
-    WEBKIT_LOGERROR("epoller remove event error %d %s", errno, strerror(errno));
-    return Status::Error(StatusCode::eEpollRemoveError, "epoller remove error");
+    WEBKIT_LOGERROR("epoller delete event error %d %s", errno, strerror(errno));
+    return Status::Error(StatusCode::eEpollDeleteError, "epoller delete error");
   }
   return Status::OK();
 }

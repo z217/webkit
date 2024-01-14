@@ -16,6 +16,7 @@ set(PROJECT_VERSION 1.0)
 project(webkit VERSION ${PROJECT_VERSION})
 
 set(WEBKIT_SOURCE_FILE
+  channel/hash_router.h
   channel/simple_adapter.cpp
   channel/simple_adapter.h
   channel/tcp_channel.cpp

@@ -34,7 +34,7 @@ enum WebkitCode {
 
   eEpollInitError = -300,
   eEpollAddError = -301,
-  eEpollRemoveError = -302,
+  eEpollDeleteError = -302,
   eEpollModifyError = -303,
   eEpollWaitError = -304,
 
@@ -130,7 +130,8 @@ class Status {
 
   template <typename... Args>
   static Status FatalF(int code, const char *format, Args &&...args) {
-    return Status(eFatal, code, fmt::sprintf(format, std::forward<Args>(args)...));
+    return Status(eFatal, code,
+                  fmt::sprintf(format, std::forward<Args>(args)...));
   }
 
  private:

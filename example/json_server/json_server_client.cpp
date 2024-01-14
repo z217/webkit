@@ -1,5 +1,6 @@
 #include "json_server_client.h"
 
+#include "channel/hash_router.h"
 #include "channel/tcp_channel.h"
 #include "packet/string_serialization.h"
 #include "util/generator.h"
@@ -13,15 +14,12 @@ JsonServerClient::JsonServerClient(webkit::ClientConfig *config)
     : config_(config) {}
 
 Status JsonServerClient::Echo(const std::string &req, std::string &rsp) {
-  webkit::TraceHelper::GetInstance()->SetTraceId(
-      webkit::UidGenerator::GetInstance()->Generate());
+  std::string trace_id = webkit::UidGenerator::GetInstance()->Generate();
+  webkit::TraceHelper::GetInstance()->SetTraceId(trace_id);
 
   webkit::TcpChannel channel(config_);
-  Status s = channel.Open([&](std::string &ip, uint16_t &port) {
-    ip = config_->GetIp();
-    port = config_->GetPort();
-    return Status::OK();
-  });
+  webkit::HashRouter<std::string> router(config_, trace_id);
+  Status s = channel.Open(router);
   if (!s.Ok()) {
     WEBKIT_LOGERROR("channel open error");
     return Status::Error(-1);

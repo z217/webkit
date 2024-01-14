@@ -5,6 +5,7 @@
 #include "socket/tcp_socket.h"
 #include "webkit/channel.h"
 #include "webkit/client_config.h"
+#include "webkit/router.h"
 
 namespace webkit {
 class TcpChannel : public Channel {
@@ -13,7 +14,7 @@ class TcpChannel : public Channel {
 
   virtual ~TcpChannel() = default;
 
-  Status Open(std::function<Status(std::string &, uint16_t &)> route_func);
+  Status Open(Router &router);
 
   Status Write(Serializer &serializer) override;
 

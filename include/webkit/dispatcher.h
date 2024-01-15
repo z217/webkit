@@ -11,7 +11,7 @@ class Dispatcher {
 
   virtual ~Dispatcher() = default;
 
-  virtual Status Dispatch(Packet *packet) = 0;
+  virtual Status Dispatch(Packet *p_packet) = 0;
 };
 
 using DispatcherFactory = ClassFactory<Dispatcher>;

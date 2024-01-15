@@ -1,4 +1,4 @@
-#include "json_dispatcher.h"
+#include "string_dispatcher.h"
 
 #include "packet/string_serialization.h"
 #include "third_party/json/include/nlohmann/json.hpp"
@@ -20,7 +20,7 @@
   } while (false)
 
 namespace webkit {
-Status JsonDispatcher::Dispatch(Packet *packet) {
+Status StringDispatcher::Dispatch(Packet *packet) {
   TraceHelper::GetInstance()->ClearTraceId();
 
   Status s;
@@ -35,47 +35,30 @@ Status JsonDispatcher::Dispatch(Packet *packet) {
     return Status::Error(StatusCode::eDisptachError, "parser parse from error");
   }
 
-  nlohmann::json req_json = nlohmann::json::parse(req, nullptr, false);
-  if (req_json.is_discarded()) {
-    WEBKIT_LOGERROR("parse request json error");
-    return Status::Error(StatusCode::eDisptachError, "packet parse json error");
-  }
-  WEBKIT_LOGDEBUG("recv req %s", req_json.dump());
-  std::string method_name;
-  nlohmann::json data_json;
-  JSON_MUST_GET(req_json, "method", method_name);
-  JSON_MUST_GET(req_json, "data", data_json);
-  std::string req_data = data_json.dump();
+  const MetaInfo &meta_info = req_parser.GetMetaInfo();
+  TraceHelper::GetInstance()->SetTraceId(meta_info.trace_id);
+  WEBKIT_LOGDEBUG("dispatch request method id %u", meta_info.method_id);
 
-  std::string rsp_data;
-  s = Forward(method_name, req_data, rsp_data);
+  std::string rsp;
+  s = Forward(meta_info.method_id, req, rsp);
   if (!s.Ok()) {
-    WEBKIT_LOGERROR("method %s forward error status code %d %s", method_name,
-                    s.Code(), s.Message());
+    WEBKIT_LOGERROR(
+        "method id %u request forward error status code %d message %s",
+        meta_info.method_id, s.Code(), s.Message());
+    return Status::Error(StatusCode::eDisptachError, "forward request error");
   }
 
-  std::string rsp_json_str = BuildRsp(s, rsp_data);
-  WEBKIT_LOGDEBUG("send rsp %s", rsp_json_str);
-
-  StringSerializer rsp_serializer(rsp_json_str);
+  StringSerializer rsp_serializer(meta_info.method_id, rsp);
   s = rsp_serializer.SerializeTo(*packet);
   if (!s.Ok()) {
     WEBKIT_LOGERROR(
-        "string serializer serialize to error status code %d message %s",
-        s.Code(), s.Message());
+        "method id %u string serializer serialze to error status code %d "
+        "message %s",
+        meta_info.method_id, s.Code(), s.Message());
     return Status::Error(StatusCode::eDisptachError,
                          "serializer serialize to error");
   }
 
   return Status::OK();
-}
-
-std::string JsonDispatcher::BuildRsp(const Status &status,
-                                     const std::string &data) {
-  nlohmann::json rsp;
-  rsp["code"] = status.Code();
-  rsp["message"] = status.Message();
-  rsp["data"] = data;
-  return rsp.dump();
 }
 }  // namespace webkit

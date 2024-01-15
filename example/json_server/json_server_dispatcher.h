@@ -1,19 +1,19 @@
 #pragma once
 
-#include "dispatcher/json_dispatcher.h"
-#include "server_impl.h"
+#include "dispatcher/string_dispatcher.h"
+#include "json_server_impl.h"
 
-class JsonServerDispatcher : public webkit::JsonDispatcher {
+class JsonServerDispatcher : public webkit::StringDispatcher {
  public:
   JsonServerDispatcher() = default;
 
   ~JsonServerDispatcher() = default;
 
-  webkit::Status Forward(const std::string &method_name, const std::string &req,
+  webkit::Status Forward(uint32_t method_id, const std::string &req,
                          std::string &rsp) override;
 
  private:
-  ServerImpl server_impl_;
+  JsonServerImpl server_impl_;
 };
 
 class JsonServerDispatcherFactory : public webkit::DispatcherFactory {

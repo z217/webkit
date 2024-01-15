@@ -1,5 +1,7 @@
 #include "string_serialization.h"
 
+#include <arpa/inet.h>
+
 #include "util/trace_helper.h"
 #include "webkit/logger.h"
 
@@ -38,8 +40,11 @@
   } while (false)
 
 namespace webkit {
-StringSerializer::StringSerializer(const std::string &str) : str_(str) {
+StringSerializer::StringSerializer(uint32_t method_id, const std::string &str)
+    : str_(str) {
   memset(&meta_info_, 0, sizeof(MetaInfo));
+  meta_info_.message_length = htonl(str_.length());
+  meta_info_.method_id = htonl(method_id);
 }
 
 Status StringSerializer::SerializeTo(Packet &packet) {
@@ -49,7 +54,6 @@ Status StringSerializer::SerializeTo(Packet &packet) {
                     sizeof(MetaInfo) + str_.length(), s.Code(), s.Message());
     return Status::Error(StatusCode::eSerializeError, "packet expand error");
   }
-  meta_info_.message_length = str_.length();
   strncpy(meta_info_.trace_id, TraceHelper::GetInstance()->GetTraceId().data(),
           sizeof(meta_info_.trace_id));
   PACKET_WRITE_RETURN_IF_ERROR(packet, &meta_info_, sizeof(MetaInfo));
@@ -73,6 +77,8 @@ Status StringParser::ParseFrom(Packet &packet) {
       return Status::Debug(StatusCode::eRetry, "retry later");
     }
     PACKET_READ_RETURN_IF_ERROR(packet, &meta_info_, sizeof(MetaInfo));
+    meta_info_.method_id = ntohl(meta_info_.method_id);
+    meta_info_.message_length = ntohl(meta_info_.message_length);
     str_.resize(meta_info_.message_length);
     TraceHelper::GetInstance()->SetTraceId(meta_info_.trace_id);
     WEBKIT_LOGDEBUG("receive packet message length %zu",
@@ -81,4 +87,6 @@ Status StringParser::ParseFrom(Packet &packet) {
   PACKET_READ_RETURN_IF_ERROR(packet, &str_[0], str_.length());
   return Status::OK();
 }
+
+const MetaInfo &StringParser::GetMetaInfo() const { return meta_info_; }
 }  // namespace webkit

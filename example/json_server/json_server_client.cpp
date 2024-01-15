@@ -2,6 +2,7 @@
 
 #include "channel/hash_router.h"
 #include "channel/tcp_channel.h"
+#include "constant.h"
 #include "packet/string_serialization.h"
 #include "util/generator.h"
 #include "util/trace_helper.h"
@@ -26,7 +27,7 @@ Status JsonServerClient::Echo(const std::string &req, std::string &rsp) {
   }
 
   static constexpr int kRetryCount = 3;
-  webkit::StringSerializer req_serializer(req);
+  webkit::StringSerializer req_serializer(eMethodIdEcho, req);
   for (int i = 0; i < kRetryCount; i++) {
     s = channel.Write(req_serializer);
     if (s.Code() != webkit::StatusCode::eRetry) break;
@@ -43,6 +44,10 @@ Status JsonServerClient::Echo(const std::string &req, std::string &rsp) {
   }
   if (!s.Ok()) {
     WEBKIT_LOGERROR("channel read error");
+    return Status::Error(-1);
+  }
+  if (rsp_parser.GetMetaInfo().method_id != eMethodIdEcho) {
+    WEBKIT_LOGERROR("method id error");
     return Status::Error(-1);
   }
 

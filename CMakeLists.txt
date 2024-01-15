@@ -21,8 +21,8 @@ set(WEBKIT_SOURCE_FILE
   channel/simple_adapter.h
   channel/tcp_channel.cpp
   channel/tcp_channel.h
-  dispatcher/json_dispatcher.cpp
-  dispatcher/json_dispatcher.h
+  dispatcher/string_dispatcher.cpp
+  dispatcher/string_dispatcher.h
   logger/callback_logger.h
   logger/chain_logger.h
   logger/stdout_logger.h

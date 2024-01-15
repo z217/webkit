@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
       webkit::ClientConfig::Host{.ip = "127.0.0.1", .port = 8080});
 
   JsonServerClient client(&cli_config);
-  std::string req = "{\"method\":\"echo\",\"data\":{\"key\":\"a\"}}";
+  std::string req = "{\"data\":\"Hello, world!\"}";
   std::string rsp;
   s = client.Echo(req, rsp);
   printf("rsp %s\n", rsp.c_str());

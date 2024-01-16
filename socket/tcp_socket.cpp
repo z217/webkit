@@ -9,6 +9,8 @@
 #include <memory>
 #include <vector>
 
+#include "util/inet_util.h"
+#include "util/syscall.h"
 #include "webkit/logger.h"
 
 namespace webkit {
@@ -36,13 +38,11 @@ Status TcpSocket::Connect(const std::string &ip, uint16_t port) {
 
   int ret = 0;
   struct sockaddr_in sin;
-  memset(&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(port);
-  ret = inet_pton(AF_INET, ip.c_str(), &sin.sin_addr);
-  if (ret < 1) {
-    WEBKIT_LOGERROR("tcp socket ip %s pattern error", ip);
-    return Status::Error(StatusCode::eParamError, "socket ip pattern error");
+  Status s = InetUtil::MakeSockAddr(ip, port, &sin);
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("make sockaddr error status code %d message %s", s.Code(),
+                    s.Message());
+    return s;
   }
 
   ret = connect(fd_, reinterpret_cast<struct sockaddr *>(&sin), sizeof(sin));
@@ -79,14 +79,12 @@ Status TcpSocket::Listen(const std::string &ip, uint16_t port) {
                          "socket set sock opt error");
   }
 
-  sockaddr_in sin;
-  memset(&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(port);
-  ret = inet_pton(AF_INET, ip.c_str(), &sin.sin_addr);
-  if (ret < 1) {
-    WEBKIT_LOGERROR("tcp socket ip %s pattern error", ip);
-    return Status::Error(StatusCode::eParamError, "socket ip pattern error");
+  struct sockaddr_in sin;
+  Status s = InetUtil::MakeSockAddr(ip, port, &sin);
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("make sockaddr error status code %d message %s", s.Code(),
+                    s.Message());
+    return s;
   }
 
   ret = bind(fd_, reinterpret_cast<sockaddr *>(&sin), sizeof(sin));
@@ -111,10 +109,11 @@ Status TcpSocket::Accept(TcpSocket *socket) {
     return Status::Error(StatusCode::eSocketDisonnected, "socket disconnected");
   }
 
-  sockaddr_in sin;
+  struct sockaddr_in sin;
   memset(&sin, 0, sizeof(sin));
   socklen_t sin_len = sizeof(sin);
-  socket->fd_ = accept(fd_, reinterpret_cast<sockaddr *>(&sin), &sin_len);
+  socket->fd_ =
+      accept(fd_, reinterpret_cast<struct sockaddr *>(&sin), &sin_len);
   if (socket->fd_ < 0) {
     if (errno == EINTR || errno == EAGAIN) {
       return Status::Warn(StatusCode::eRetry);
@@ -123,16 +122,12 @@ Status TcpSocket::Accept(TcpSocket *socket) {
     return Status::Error(StatusCode::eSocketAcceptError, "socket accept error");
   }
 
-  {
-    static thread_local char buffer[INET_ADDRSTRLEN];
-    if (inet_ntop(AF_INET, &sin.sin_addr, buffer, INET_ADDRSTRLEN) == nullptr) {
-      WEBKIT_LOGERROR("trans ip addr error %d %s", errno, strerror(errno));
-      return Status::Error(StatusCode::eSocketAcceptError,
-                           "socket accept error");
-    }
-    socket->ip_.assign(buffer, INET_ADDRSTRLEN);
+  Status s = InetUtil::InetNtop(sin.sin_addr, socket->ip_);
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("trans ip addr error %d %s", errno, strerror(errno));
+    return s;
   }
-  socket->port_ = ntohs(sin.sin_port);
+  socket->port_ = InetUtil::Ntoh(sin.sin_port);
   socket->is_connected_ = true;
   return Status::OK();
 }
@@ -270,19 +265,11 @@ Status TcpSocket::SetNonBlock() {
     WEBKIT_LOGERROR("tcp socket disconnected");
     return Status::Error(StatusCode::eSocketDisonnected, "socket disconnected");
   }
-  int flags = fcntl(fd_, F_GETFL, 0);
-  if (flags < 0) {
-    WEBKIT_LOGERROR("tcp socket set non block get file flags error %d %s",
-                    errno, strerror(errno));
-    return Status::Error(StatusCode::eSocketFcntlError,
-                         "socket set non block error");
-  }
-  int ret = fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
-  if (ret < 0) {
-    WEBKIT_LOGERROR("tcp socket set non block set file flags error %d %s",
-                    errno, strerror(errno));
-    return Status::Error(StatusCode::eSocketFcntlError,
-                         "socket set non block error");
+  Status s = Syscall::SetNonBlock(fd_);
+  if (!s.Ok()) {
+    WEBKIT_LOGERROR("set non block error status code %d message %s", s.Code(),
+                    s.Message());
+    return s;
   }
   return Status::OK();
 }

@@ -1,3 +1,5 @@
+#include <signal.h>
+
 #include <chrono>
 #include <cstdio>
 #include <thread>
@@ -18,9 +20,9 @@ static bool IsMainRunning = true;
 
 static void RegisterSignalHandler() {
   auto stop_func = [](int) { IsMainRunning = false; };
-  webkit::Signal(SIGKILL, stop_func);
-  webkit::Signal(SIGUSR1, stop_func);
-  webkit::Signal(SIGINT, stop_func);
+  webkit::Syscall::Signal(SIGKILL, stop_func);
+  webkit::Syscall::Signal(SIGUSR1, stop_func);
+  webkit::Syscall::Signal(SIGINT, stop_func);
 }
 
 int main(int argc, char *argv[]) {
@@ -32,7 +34,7 @@ int main(int argc, char *argv[]) {
   webkit::Status s;
 
   if (config.IsDeamon()) {
-    s = webkit::Deamon();
+    s = webkit::Syscall::Deamon();
     if (!s.Ok()) {
       printf("server run deamon error status code %d message %s\n", s.Code(),
              s.Message());

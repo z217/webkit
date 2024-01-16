@@ -1,23 +1,8 @@
 #include "string_dispatcher.h"
 
-#include "packet/string_serialization.h"
-#include "third_party/json/include/nlohmann/json.hpp"
+#include "dispatcher/string_serialization.h"
 #include "util/trace_helper.h"
 #include "webkit/logger.h"
-
-#define JSON_MUST_GET(JSON, FIELD, VALUE)                                      \
-  do {                                                                         \
-    try {                                                                      \
-      (VALUE) = (JSON)[(FIELD)];                                               \
-    } catch (nlohmann::json::type_error &) {                                   \
-      WEBKIT_LOGERROR("req json get %s type error", FIELD);                    \
-      return Status::Error(StatusCode::eJsonTypeError, "req json type error"); \
-    } catch (nlohmann::json::parse_error &) {                                  \
-      WEBKIT_LOGERROR("req json get %s parse error", FIELD);                   \
-      return Status::Error(StatusCode::eJsonParseError,                        \
-                           "req json parse error");                            \
-    }                                                                          \
-  } while (false)
 
 namespace webkit {
 Status StringDispatcher::Dispatch(Packet *packet) {
@@ -35,7 +20,7 @@ Status StringDispatcher::Dispatch(Packet *packet) {
     return Status::Error(StatusCode::eDisptachError, "parser parse from error");
   }
 
-  const MetaInfo &meta_info = req_parser.GetMetaInfo();
+  const StringSerializationMetaInfo &meta_info = req_parser.GetMetaInfo();
   TraceHelper::GetInstance()->SetTraceId(meta_info.trace_id);
   WEBKIT_LOGDEBUG("dispatch request method id %u", meta_info.method_id);
 

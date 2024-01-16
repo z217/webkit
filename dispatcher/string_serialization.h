@@ -6,7 +6,7 @@
 
 namespace webkit {
 #pragma pack(push, 1)
-struct MetaInfo {
+struct StringSerializationMetaInfo {
   uint32_t message_length;
   char trace_id[32];
   uint32_t method_id;
@@ -15,6 +15,8 @@ struct MetaInfo {
 
 class StringSerializer : public Serializer {
  public:
+  using MetaInfo = StringSerializationMetaInfo;
+
   StringSerializer(uint32_t method_id, const std::string &str);
 
   virtual Status SerializeTo(Packet &packet) override;
@@ -26,6 +28,8 @@ class StringSerializer : public Serializer {
 
 class StringParser : public Parser {
  public:
+  using MetaInfo = StringSerializationMetaInfo;
+
   StringParser(std::string &str);
 
   virtual Status ParseFrom(Packet &packet) override;

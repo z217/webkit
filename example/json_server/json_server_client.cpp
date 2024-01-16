@@ -3,7 +3,7 @@
 #include "channel/hash_router.h"
 #include "channel/tcp_channel.h"
 #include "constant.h"
-#include "packet/string_serialization.h"
+#include "dispatcher/string_serialization.h"
 #include "util/generator.h"
 #include "util/trace_helper.h"
 #include "webkit/logger.h"

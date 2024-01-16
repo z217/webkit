@@ -5,6 +5,7 @@
 #include <cassert>
 #include <vector>
 
+#include "util/inet_util.h"
 #include "webkit/logger.h"
 
 static constexpr uint32_t kVersion = 1U;
@@ -12,8 +13,8 @@ static constexpr uint32_t kVersion = 1U;
 namespace webkit {
 SimpleAdapter::SimpleAdapter(IoBase &src, IoBase &dst, size_t src_size)
     : ProtocolAdapter(src, dst, src_size), header_size_(0) {
-  header_.length = htonl(src_size);
-  header_.version = htonl(kVersion);
+  header_.length = InetUtil::Hton(static_cast<uint32_t>(src_size));
+  header_.version = InetUtil::Hton(kVersion);
 }
 
 Status SimpleAdapter::AdaptTo() {
@@ -83,13 +84,13 @@ Status SimpleAdapter::ReadHeader() {
     return s;
   }
 
-  uint32_t version = ntohl(header_.version);
+  uint32_t version = InetUtil::Ntoh(header_.version);
   if (version != kVersion) {
     WEBKIT_LOGERROR("read header version diff, expect %u get %u", kVersion,
                     version);
     return Status::Error(StatusCode::eAdapterVersionError, "version diff");
   }
-  dst_size_ = ntohl(header_.length);
+  dst_size_ = InetUtil::Ntoh(header_.length);
   return Status::OK();
 }
 

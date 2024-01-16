@@ -23,14 +23,14 @@ set(WEBKIT_SOURCE_FILE
   channel/tcp_channel.h
   dispatcher/string_dispatcher.cpp
   dispatcher/string_dispatcher.h
+  dispatcher/string_serialization.cpp
+  dispatcher/string_serialization.h
   logger/callback_logger.h
   logger/chain_logger.h
   logger/stdout_logger.h
   logger/comm_logger.h
   packet/byte_packet.cpp
   packet/byte_packet.h
-  packet/string_serialization.cpp
-  packet/string_serialization.h
   pool/thread_pool.cpp
   pool/thread_pool.h
   reactor/epoll_event.cpp
@@ -42,6 +42,10 @@ set(WEBKIT_SOURCE_FILE
   socket/tcp_socket.cpp
   socket/tcp_socket.h
   util/circular_queue.h
+  util/generator.h
+  util/inet_util.cpp
+  util/inet_util.h
+  util/syscall.cpp
   util/syscall.h
   util/time.h
   util/trace_helper.h

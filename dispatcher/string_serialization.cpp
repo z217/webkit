@@ -88,5 +88,7 @@ Status StringParser::ParseFrom(Packet &packet) {
   return Status::OK();
 }
 
-const MetaInfo &StringParser::GetMetaInfo() const { return meta_info_; }
+const StringSerializationMetaInfo &StringParser::GetMetaInfo() const {
+  return meta_info_;
+}
 }  // namespace webkit

@@ -24,7 +24,6 @@ enum WebkitCode {
   eSocketReadError = -108,
   eSocketCloseError = -109,
   eSocketPeerClosed = -110,
-  eSocketFcntlError = -111,
   eSocketOptError = -112,
 
   eChannelRouteError = -200,
@@ -60,6 +59,7 @@ enum WebkitCode {
 
   eSyscallDeamonError = -1101,
   eThreadKeyError = -1102,
+  eFcntlError = -1103,
 };
 }
 

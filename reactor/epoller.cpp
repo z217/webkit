@@ -60,7 +60,7 @@ Status Epoller::Modify(EpollEvent *event) {
 
 Status Epoller::Wait(std::vector<Event *> &event_vec) {
   static thread_local std::vector<struct epoll_event> event_buffer;
-  if (event_buffer.size() < max_event_) {
+  if (event_buffer.size() < static_cast<size_t>(max_event_)) {
     event_buffer.resize(max_event_);
   }
   int nevent = epoll_wait(epoll_fd_, &event_buffer[0], max_event_, timeout_ms_);

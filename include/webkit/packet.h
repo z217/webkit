@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 
 #include "webkit/class_factory.h"
@@ -7,9 +8,9 @@
 #include "webkit/status.h"
 
 namespace webkit {
-class Packet : public IoBase {
+class Packet : public IoBase, public std::iostream {
  public:
-  Packet() = default;
+  Packet(std::streambuf *p_buf) : std::iostream(p_buf) {}
 
   virtual ~Packet() = default;
 
@@ -19,9 +20,7 @@ class Packet : public IoBase {
 
   virtual void Clear() = 0;
 
-  virtual size_t GetRemainDataSize() const = 0;
-
-  virtual Status Expand(size_t expand_size) = 0;
+  virtual size_t GetDataSize() const = 0;
 };
 
 using PacketFactory = ClassFactory<Packet>;

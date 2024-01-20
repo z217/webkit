@@ -26,7 +26,7 @@ class UidGenerator {
     char *buf = new char[buf_len];
     memset(buf, 0, buf_len);
     memcpy(buf, ip.data(), ip.length());
-    for (int seg = 0; seg * 16 < buf_len; seg++) {
+    for (size_t seg = 0; seg * 16 < buf_len; seg++) {
       const uint32_t *u32_ptr = reinterpret_cast<uint32_t *>(buf) + seg;
       host_id_ ^= *u32_ptr;
     }

@@ -40,5 +40,9 @@ class Event : public std::enable_shared_from_this<Event> {
   virtual Status DelFromReactor() = 0;
 
   virtual Status ModInReactor() = 0;
+
+  virtual void SetBusy(bool is_busy) = 0;
+
+  virtual bool IsBusy() const = 0;
 };
 }  // namespace webkit

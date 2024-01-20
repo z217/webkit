@@ -70,7 +70,9 @@ void ThreadServer::RunIo(uint32_t thread_id,
     WEBKIT_LOGDEBUG("thread %u epoll wait return %zu", thread_id,
                     event_vec.size());
     for (Event *event : event_vec) {
+      if (event->IsBusy()) continue;
       if (event->IsReadyToRecv()) {
+        event->SetBusy(true);
         s = worker_pool_->Submit([&] {
           Status s;
 
@@ -105,8 +107,10 @@ void ThreadServer::RunIo(uint32_t thread_id,
             FreeEvent(event->shared_from_this());
             return;
           }
+          event->SetBusy(false);
         });
       } else if (event->IsReadyToSend()) {
+        event->SetBusy(true);
         s = worker_pool_->Submit([&] {
           Status s;
 
@@ -226,6 +230,7 @@ Status ThreadServer::FreeEvent(std::shared_ptr<Event> event_sp) {
                     s.Code(), s.Message());
     return s;
   }
+  event_sp->SetBusy(false);
 
   s = event_free_queue_->Push(event_sp);
   if (!s.Ok()) {

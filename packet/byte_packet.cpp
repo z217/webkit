@@ -5,36 +5,46 @@
 #include "webkit/logger.h"
 
 namespace webkit {
-BytePacket::BytePacket()
-    : buffer_(nullptr), capacity_(0), write_pos_(0), read_pos_(0) {}
+BytePacketBuf::BytePacketBuf(size_t capacity)
+    : buffer_(nullptr), size_(0), capacity_(capacity) {
+  setg(nullptr, nullptr, nullptr);
+  setp(nullptr, nullptr);
+}
 
-BytePacket::~BytePacket() { delete[] buffer_; }
+BytePacketBuf::~BytePacketBuf() { delete[] buffer_; }
 
-Status BytePacket::Write(const void *src, size_t src_size, size_t &write_size) {
-  ExpandIfNoSpace(src_size);
+Status BytePacketBuf::Write(const void *src, size_t src_size,
+                            size_t &write_size) {
+  Fit();
+  Status s = EnsureSize(src_size);
+  if (!s.Ok()) return s;
   write_size = 0;
-  if (write_pos_ + src_size > capacity_) {
-    size_t tail_size = capacity_ - write_pos_;
-    memcpy(buffer_ + write_pos_, src, tail_size);
-    write_pos_ = 0;
+  if (pptr() + src_size >= epptr()) {
+    size_t tail_size = static_cast<size_t>(epptr() - pptr());
+    memcpy(pptr(), src, tail_size);
+    pbump(tail_size);
+    Fit();
     src_size -= tail_size;
-    write_size = tail_size;
+    write_size += tail_size;
   }
-  memcpy(buffer_ + write_pos_,
-         reinterpret_cast<const std::byte *>(src) + write_size, src_size);
+  memcpy(pptr(), reinterpret_cast<const std::byte *>(src) + write_size,
+         src_size);
+  pbump(src_size);
   write_size += src_size;
-  write_pos_ += src_size;
   return Status::OK();
 }
 
-Status BytePacket::Write(IoBase &src, size_t src_size, size_t &write_size) {
-  ExpandIfNoSpace(src_size);
+Status BytePacketBuf::Write(IoBase &src, size_t src_size, size_t &write_size) {
+  Fit();
+  Status s = EnsureSize(src_size);
+  if (!s.Ok()) return s;
   write_size = 0;
-  if (write_pos_ + src_size > capacity_) {
-    size_t tail_size = capacity_ - write_pos_;
+  if (pptr() + src_size >= epptr()) {
+    size_t tail_size = static_cast<size_t>(epptr() - pptr());
     size_t read_size = 0;
-    Status s = src.Read(buffer_ + write_pos_, tail_size, read_size);
-    write_pos_ = (write_pos_ + read_size) % capacity_;
+    s = src.Read(pptr(), tail_size, read_size);
+    pbump(read_size);
+    Fit();
     src_size -= read_size;
     write_size += read_size;
     if (!s.Ok() || tail_size != read_size) {
@@ -44,9 +54,9 @@ Status BytePacket::Write(IoBase &src, size_t src_size, size_t &write_size) {
     }
   }
   size_t read_size = 0;
-  Status s = src.Read(buffer_ + write_pos_, src_size, read_size);
+  s = src.Read(pptr(), src_size, read_size);
+  pbump(read_size);
   write_size += read_size;
-  write_pos_ += read_size;
   if (!s.Ok() || src_size != read_size) {
     WEBKIT_LOGERROR("read src expect %zu get %zu status code %d message %s",
                     src_size, read_size, s.Code(), s.Message());
@@ -56,44 +66,45 @@ Status BytePacket::Write(IoBase &src, size_t src_size, size_t &write_size) {
   return Status::OK();
 }
 
-Status BytePacket::Read(void *dst, size_t dst_size, size_t &read_size) {
-  size_t target_size = std::min(GetRemainDataSize(), dst_size);
+Status BytePacketBuf::Read(void *dst, size_t dst_size, size_t &read_size) {
+  Fit();
+  size_t data_size = std::min(GetDataSize(), dst_size);
   read_size = 0;
-  if (target_size == 0) return Status::OK();
-  if (read_pos_ + target_size > capacity_) {
-    size_t tail_size = capacity_ - read_pos_;
-    memcpy(dst, buffer_ + read_pos_, tail_size);
-    read_pos_ = 0;
-    target_size -= tail_size;
-    read_size = tail_size;
+  if (gptr() + data_size >= egptr()) {
+    size_t tail_size = static_cast<size_t>(egptr() - gptr());
+    memcpy(dst, gptr(), tail_size);
+    gbump(tail_size);
+    Fit();
+    data_size -= tail_size;
+    read_size += tail_size;
   }
-  memcpy(reinterpret_cast<std::byte *>(dst) + read_size, buffer_ + read_pos_,
-         target_size);
-  read_size += target_size;
-  read_pos_ = (read_pos_ + target_size) % capacity_;
+  memcpy(reinterpret_cast<std::byte *>(dst) + read_size, gptr(), data_size);
+  gbump(data_size);
+  read_size += data_size;
   return Status::OK();
 }
 
-Status BytePacket::Read(IoBase &dst, size_t dst_size, size_t &read_size) {
-  size_t data_size = std::min(GetRemainDataSize(), dst_size);
+Status BytePacketBuf::Read(IoBase &dst, size_t dst_size, size_t &read_size) {
+  Fit();
+  size_t data_size = std::min(GetDataSize(), dst_size);
   read_size = 0;
-  if (data_size == 0) return Status::OK();
-  if (read_pos_ + data_size > capacity_) {
-    size_t tail_size = capacity_ - read_pos_;
+  if (gptr() + data_size >= egptr()) {
+    size_t tail_size = static_cast<size_t>(egptr() - gptr());
     size_t write_size = 0;
-    Status s = dst.Write(buffer_ + read_pos_, tail_size, write_size);
-    read_pos_ = (read_pos_ + write_size) % capacity_;
+    Status s = dst.Write(gptr(), tail_size, write_size);
+    gbump(write_size);
+    Fit();
     data_size -= write_size;
     read_size += write_size;
     if (!s.Ok() || write_size != tail_size) {
       WEBKIT_LOGERROR("write dst expect %zu get %zu status code %d message %s",
-                      tail_size, write_size, s.Code(), s.Message());
+                      data_size, write_size, s.Code(), s.Message());
       return s;
     }
   }
   size_t write_size = 0;
-  Status s = dst.Write(buffer_ + read_pos_, data_size, write_size);
-  read_pos_ += write_size;
+  Status s = dst.Write(gptr(), data_size, write_size);
+  gbump(write_size);
   read_size += write_size;
   if (!s.Ok() || write_size != data_size) {
     WEBKIT_LOGERROR("write dst expect %zu get %zu status code %d message %s",
@@ -104,54 +115,130 @@ Status BytePacket::Read(IoBase &dst, size_t dst_size, size_t &read_size) {
   return Status::OK();
 }
 
-void BytePacket::Clear() {
-  write_pos_ = 0;
-  read_pos_ = 0;
+BytePacketBuf::int_type BytePacketBuf::overflow(int_type c) {
+  if (pptr() < gptr()) {
+    setp(pptr(), gptr());
+  } else if (gptr() > eback()) {
+    setp(reinterpret_cast<char *>(buffer_), gptr());
+  } else if (size_ < capacity_) {
+    size_t new_size = std::min(size_ / 2 * 3, capacity_);
+    Status s = Expand(new_size - size_);
+    if (!s.Ok()) return traits_type::eof();
+  } else {
+    return traits_type::eof();
+  }
+  if (!traits_type::eq_int_type(c, traits_type::eof())) {
+    sputc(c);
+  }
+  return traits_type::not_eof(c);
 }
 
-size_t BytePacket::GetRemainDataSize() const {
-  if (capacity_ == 0) return 0;
-  if (read_pos_ <= write_pos_) return write_pos_ - read_pos_;
-  return write_pos_ + capacity_ - read_pos_;
+BytePacketBuf::int_type BytePacketBuf::underflow() {
+  if (gptr() < pptr()) {
+    setg(gptr(), gptr(), pptr());
+  } else if (pptr() > pbase()) {
+    setg(reinterpret_cast<char *>(buffer_), reinterpret_cast<char *>(buffer_),
+         pptr());
+  } else {
+    return traits_type::eof();
+  }
+  return traits_type::to_int_type(*gptr());
 }
 
-size_t BytePacket::GetRemainEmptySize() const {
-  if (capacity_ == 0) return 0;
-  if (read_pos_ >= write_pos_) return read_pos_ - write_pos_;
-  return read_pos_ + capacity_ - write_pos_;
+void BytePacketBuf::Clear() {
+  char *ptr = reinterpret_cast<char *>(buffer_);
+  setg(ptr, ptr, ptr);
+  setp(ptr, ptr);
 }
 
-Status BytePacket::Expand(size_t expand_size) {
-  ExpandIfNoSpace(expand_size);
+size_t BytePacketBuf::GetDataSize() const {
+  if (egptr() <= epptr()) return static_cast<size_t>(pptr() - gptr());
+  return pptr() + size_ - gptr();
+}
+
+Status BytePacketBuf::Expand(size_t alloc_size) {
+  size_t new_size = size_ + alloc_size;
+  if (new_size > capacity_) {
+    WEBKIT_LOGERROR("expand packet expect %zu capacity %zu", new_size,
+                    capacity_);
+    return Status::Error(StatusCode::ePacketFullError, "packet is full");
+  }
+  new_size = std::min(new_size / 2 * 3, capacity_);
+  std::byte *new_buffer = new std::byte[new_size];
+  size_t data_size;
+  Fold(new_buffer, data_size);
+  std::swap(buffer_, new_buffer);
+  size_ = new_size;
+  setp(reinterpret_cast<char *>(buffer_) + data_size,
+       reinterpret_cast<char *>(buffer_) + size_);
+  setg(reinterpret_cast<char *>(buffer_), reinterpret_cast<char *>(buffer_),
+       reinterpret_cast<char *>(buffer_) + data_size);
+  delete[] new_buffer;
   return Status::OK();
 }
 
-void BytePacket::ExpandIfNoSpace(size_t append_size) {
-  size_t use_size = GetRemainDataSize();
-  if (use_size + append_size < capacity_) return;
-  size_t new_capacity = (capacity_ + append_size) / 2 * 3;
-  std::byte *new_buffer = new std::byte[new_capacity];
-  size_t new_use_size;
-  Fold(new_buffer, new_use_size);
-  delete[] buffer_;
-  buffer_ = new_buffer;
-  capacity_ = new_capacity;
-  write_pos_ = new_use_size;
-  read_pos_ = 0;
+Status BytePacketBuf::EnsureSize(size_t size) {
+  size_t data_size = GetDataSize();
+  if (size_ >= size + data_size) return Status::OK();
+  return Expand(size + data_size - size_);
 }
 
-void BytePacket::Fold(std::byte *dst, size_t &dst_size) {
-  dst_size = 0;
-  if (read_pos_ > write_pos_) {
-    memcpy(dst, buffer_ + read_pos_, capacity_ - read_pos_);
-    read_pos_ = 0;
-    dst_size = capacity_ - read_pos_;
+void BytePacketBuf::Fit() {
+  if (egptr() < pptr()) {
+    setg(gptr(), gptr(), pptr());
+    if (pptr() >= epptr()) {
+      setp(reinterpret_cast<char *>(buffer_), gptr());
+    }
+  } else if (epptr() < gptr()) {
+    setp(pptr(), gptr());
+    if (gptr() >= egptr()) {
+      setg(reinterpret_cast<char *>(buffer_), reinterpret_cast<char *>(buffer_),
+           pptr());
+    }
   }
-  memcpy(dst + dst_size, buffer_ + read_pos_, write_pos_ - read_pos_);
-  dst_size += write_pos_ - read_pos_;
 }
+
+void BytePacketBuf::Fold(std::byte *dst, size_t &dst_size) {
+  dst_size = 0;
+  if (egptr() > epptr()) {
+    size_t tail_size = static_cast<size_t>(egptr() - gptr());
+    memmove(dst, gptr(), tail_size);
+    setg(reinterpret_cast<char *>(buffer_), reinterpret_cast<char *>(buffer_),
+         pptr());
+    dst_size += tail_size;
+  }
+  size_t data_size = static_cast<size_t>(pptr() - gptr());
+  memmove(dst + dst_size, gptr(), data_size);
+  dst_size += data_size;
+  gbump(data_size);
+}
+
+BytePacket::BytePacket(size_t capacity) : buf_(capacity), Packet(&buf_) {}
+
+Status BytePacket::Write(const void *src, size_t src_size, size_t &write_size) {
+  return buf_.Write(src, src_size, write_size);
+}
+
+Status BytePacket::Write(IoBase &src, size_t src_size, size_t &write_size) {
+  return buf_.Write(src, src_size, write_size);
+}
+
+Status BytePacket::Read(void *dst, size_t dst_size, size_t &read_size) {
+  return buf_.Read(dst, dst_size, read_size);
+}
+
+Status BytePacket::Read(IoBase &dst, size_t dst_size, size_t &read_size) {
+  return buf_.Read(dst, dst_size, read_size);
+}
+
+void BytePacket::Clear() { buf_.Clear(); }
+
+size_t BytePacket::GetDataSize() const { return buf_.GetDataSize(); }
+
+BytePacketFactory::BytePacketFactory(ServerConfig *p_config)
+    : p_config_(p_config) {}
 
 std::shared_ptr<Packet> BytePacketFactory::Build() {
-  return std::make_shared<BytePacket>();
+  return std::make_shared<BytePacket>(p_config_->GetPacketMaxSize());
 }
 }  // namespace webkit

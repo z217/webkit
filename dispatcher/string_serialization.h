@@ -7,9 +7,9 @@
 namespace webkit {
 #pragma pack(push, 1)
 struct StringSerializationMetaInfo {
+  uint32_t method_id;
   uint32_t message_length;
   char trace_id[32];
-  uint32_t method_id;
 };
 #pragma pack(pop)
 

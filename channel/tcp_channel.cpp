@@ -7,7 +7,6 @@ namespace webkit {
 TcpChannel::TcpChannel(const ClientConfig *config)
     : config_(config), packet_sp_(nullptr) {
   packet_sp_ = PacketFactory::GetDefaultInstance()->Build();
-  packet_sp_->Expand(128);
 }
 
 Status TcpChannel::Open(Router &router) {
@@ -48,7 +47,7 @@ Status TcpChannel::Write(Serializer &serializer) {
   }
   std::shared_ptr<ProtocolAdapter> adapter_sp =
       ProtocolAdapterFactory::GetDefaultInstance()->Build(
-          *packet_sp_, tcp_socket_, packet_sp_->GetRemainDataSize());
+          *packet_sp_, tcp_socket_, packet_sp_->GetDataSize());
   s = adapter_sp->AdaptTo();
   if (s.Code() == StatusCode::eRetry) return s;
   if (!s.Ok()) {

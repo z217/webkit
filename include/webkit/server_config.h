@@ -17,6 +17,7 @@ class ServerConfig {
         worker_thread_num_(8),
         worker_queue_size_(2000),
         max_connection_(2000),
+        packet_max_size_(64UL << 20),
         is_deamon_(false) {}
 
   virtual ~ServerConfig() = default;
@@ -73,6 +74,11 @@ class ServerConfig {
   void SetDeamon(bool is_deamon) { is_deamon_ = is_deamon; }
   bool IsDeamon() const { return is_deamon_; }
 
+  void SetPacketMaxSize(size_t packet_max_size) {
+    packet_max_size_ = packet_max_size;
+  }
+  size_t GetPacketMaxSize() const { return packet_max_size_; }
+
  protected:
   std::string ip_;
   uint16_t port_;
@@ -85,6 +91,7 @@ class ServerConfig {
   uint32_t worker_thread_num_;
   uint32_t worker_queue_size_;
   uint32_t max_connection_;
+  size_t packet_max_size_;
   bool is_deamon_;
 };
 }  // namespace webkit

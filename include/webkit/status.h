@@ -57,9 +57,12 @@ enum WebkitCode {
 
   eAdapterVersionError = -1001,
 
-  eSyscallDeamonError = -1101,
-  eThreadKeyError = -1102,
-  eFcntlError = -1103,
+  ePacketFullError = -1101,
+  ePacketSyncError = -1102,
+
+  eSyscallDeamonError = -1201,
+  eThreadKeyError = -1202,
+  eFcntlError = -1203,
 };
 }
 

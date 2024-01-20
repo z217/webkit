@@ -11,7 +11,8 @@ EpollEvent::EpollEvent(std::shared_ptr<Epoller> epoller_sp,
     : epoller_sp_(epoller_sp),
       socket_sp_(socket_sp),
       packet_sp_(packet_sp),
-      is_et_mode_(is_et_mode) {
+      is_et_mode_(is_et_mode),
+      is_busy_(false) {
   memset(&epoll_event_, 0, sizeof(epoll_event_));
   epoll_event_.data.ptr = this;
 }
@@ -41,7 +42,7 @@ bool EpollEvent::IsReadyToRecv() const { return epoll_event_.events & EPOLLIN; }
 Status EpollEvent::Send() {
   std::shared_ptr<ProtocolAdapter> adapter_sp =
       ProtocolAdapterFactory::GetDefaultInstance()->Build(
-          *packet_sp_, *socket_sp_, packet_sp_->GetRemainDataSize());
+          *packet_sp_, *socket_sp_, packet_sp_->GetDataSize());
   Status s = adapter_sp->AdaptTo();
   if (!s.Ok()) {
     WEBKIT_LOGERROR("adapt packet error status code %d message %s", s.Code(),
@@ -73,6 +74,10 @@ Status EpollEvent::AddToReactor() { return epoller_sp_->Add(this); }
 Status EpollEvent::DelFromReactor() { return epoller_sp_->Delete(this); }
 
 Status EpollEvent::ModInReactor() { return epoller_sp_->Modify(this); }
+
+void EpollEvent::SetBusy(bool is_busy) { is_busy_ = is_busy; }
+
+bool EpollEvent::IsBusy() const { return is_busy_; }
 
 void EpollEvent::SetSocket(std::shared_ptr<Socket> socket_sp) {
   socket_sp_ = socket_sp;

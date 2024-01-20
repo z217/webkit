@@ -37,10 +37,11 @@ int main(int argc, char *argv[]) {
     s = webkit::Syscall::Deamon();
     if (!s.Ok()) {
       printf("server run deamon error status code %d message %s\n", s.Code(),
-             s.Message());
+             s.Message().c_str());
       return -1;
     }
   }
+  RegisterSignalHandler();
 
   webkit::StdoutLogger stdout_logger;
   auto comm_logger_up = webkit::CommLogger::Open("json_server.log");
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]) {
   webkit::EpollerFactory epoller_factory(&config);
   webkit::ReactorFactory::SetDefaultInstance(&epoller_factory);
 
-  webkit::BytePacketFactory packet_factory;
+  webkit::BytePacketFactory packet_factory(&config);
   webkit::PacketFactory::SetDefaultInstance(&packet_factory);
 
   config.SetWorkerThreadNum(1);
@@ -69,13 +70,13 @@ int main(int argc, char *argv[]) {
   s = server.Init();
   if (!s.Ok()) {
     printf("server init error status code %d message %s\n", s.Code(),
-           s.Message());
+           s.Message().c_str());
     return -1;
   }
   s = server.Run();
   if (!s.Ok()) {
     printf("server run error status code %d message %s\n", s.Code(),
-           s.Message());
+           s.Message().c_str());
     return -1;
   }
 

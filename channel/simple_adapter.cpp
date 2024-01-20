@@ -50,8 +50,6 @@ Status SimpleAdapter::WriteHeader() {
                     src_length, write_size, s.Code(), s.Message());
     return s;
   }
-
-  WEBKIT_LOGDEBUG("send header length %zu", src_size_);
   return Status::OK();
 }
 

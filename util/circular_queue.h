@@ -20,7 +20,7 @@ class CircularQueue {
  public:
   CircularQueue(size_t capacity);
 
-  ~CircularQueue();
+  virtual ~CircularQueue();
 
   virtual Status Push(const T &value);
 

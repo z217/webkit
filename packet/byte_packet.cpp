@@ -118,10 +118,10 @@ Status BytePacketBuf::Read(IoBase &dst, size_t dst_size, size_t &read_size) {
 BytePacketBuf::int_type BytePacketBuf::overflow(int_type c) {
   if (pptr() < gptr()) {
     setp(pptr(), gptr());
-  } else if (gptr() > eback()) {
+  } else if (pptr() > gptr()) {
     setp(reinterpret_cast<char *>(buffer_), gptr());
   } else if (size_ < capacity_) {
-    size_t new_size = std::min(size_ / 2 * 3, capacity_);
+    size_t new_size = size_ == 0 ? 10 : std::min(size_ / 2 * 3, capacity_);
     Status s = Expand(new_size - size_);
     if (!s.Ok()) return traits_type::eof();
   } else {
@@ -136,13 +136,14 @@ BytePacketBuf::int_type BytePacketBuf::overflow(int_type c) {
 BytePacketBuf::int_type BytePacketBuf::underflow() {
   if (gptr() < pptr()) {
     setg(gptr(), gptr(), pptr());
-  } else if (pptr() > pbase()) {
+  } else if (gptr() > pptr()) {
     setg(reinterpret_cast<char *>(buffer_), reinterpret_cast<char *>(buffer_),
          pptr());
-  } else {
-    return traits_type::eof();
   }
-  return traits_type::to_int_type(*gptr());
+  if (gptr() != pptr()) {
+    return sgetc();
+  }
+  return traits_type::eof();
 }
 
 void BytePacketBuf::Clear() {
@@ -164,6 +165,7 @@ Status BytePacketBuf::Expand(size_t alloc_size) {
     return Status::Error(StatusCode::ePacketFullError, "packet is full");
   }
   new_size = std::min(new_size / 2 * 3, capacity_);
+  if (new_size == 0) new_size = std::min(10UL, capacity_);
   std::byte *new_buffer = new std::byte[new_size];
   size_t data_size;
   Fold(new_buffer, data_size);

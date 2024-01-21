@@ -70,6 +70,7 @@ class Logger : public InstanceBase<Logger> {
   Level GetLevel() const { return level_; }
 
   static bool IsLogEnable(Level level) {
+    if (GetDefaultInstance() == nullptr) return false;
     return GetDefaultInstance()->GetLevel() <= level;
   }
 

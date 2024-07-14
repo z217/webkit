@@ -20,7 +20,7 @@ Status StringDispatcher::Dispatch(Packet *packet) {
     return Status::Error(StatusCode::eDisptachError, "parser parse from error");
   }
 
-  const StringSerializationMetaInfo &meta_info = req_parser.GetMetaInfo();
+  const StringSerialization::MetaInfo &meta_info = req_parser.GetMetaInfo();
   TraceHelper::GetInstance()->SetTraceId(meta_info.trace_id);
   WEBKIT_LOGDEBUG("dispatch request method id %u", meta_info.method_id);
 
@@ -46,4 +46,4 @@ Status StringDispatcher::Dispatch(Packet *packet) {
 
   return Status::OK();
 }
-}  // namespace webkit
+} // namespace webkit

@@ -9,7 +9,6 @@
 #include "webkit/logger.h"
 
 using webkit::Status;
-using webkit::StatusCode::WebkitCode;
 
 JsonServerClient::JsonServerClient(webkit::ClientConfig *config)
     : config_(config) {}

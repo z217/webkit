@@ -5,30 +5,34 @@
 #include "webkit/serialization.h"
 
 namespace webkit {
+struct StringSerialization {
+public:
 #pragma pack(push, 1)
-struct StringSerializationMetaInfo {
-  uint32_t method_id;
-  uint32_t message_length;
-  char trace_id[32];
-};
+  struct MetaInfo {
+    uint32_t meta_length;
+    uint32_t method_id;
+    uint32_t message_length;
+    char trace_id[32];
+  };
 #pragma pack(pop)
+};
 
-class StringSerializer : public Serializer {
- public:
-  using MetaInfo = StringSerializationMetaInfo;
+class StringSerializer : public Serializer, public StringSerialization {
+public:
+  using MetaInfo = StringSerialization::MetaInfo;
 
   StringSerializer(uint32_t method_id, const std::string &str);
 
   virtual Status SerializeTo(Packet &packet) override;
 
- private:
+private:
   const std::string &str_;
   MetaInfo meta_info_;
 };
 
-class StringParser : public Parser {
- public:
-  using MetaInfo = StringSerializationMetaInfo;
+class StringParser : public Parser, public StringSerialization {
+public:
+  using MetaInfo = StringSerialization::MetaInfo;
 
   StringParser(std::string &str);
 
@@ -36,8 +40,8 @@ class StringParser : public Parser {
 
   const MetaInfo &GetMetaInfo() const;
 
- private:
+private:
   std::string &str_;
   MetaInfo meta_info_;
 };
-}  // namespace webkit
+} // namespace webkit
